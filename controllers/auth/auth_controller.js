@@ -1,6 +1,6 @@
-const userModel = require('../../models/users/user');
-const handle = require('../../../../NodejsAlicia/BusherCocdrilMovil/Server/utils/handle/handle_error');
-const getDateAndTime = require('../../../../NodejsAlicia/BusherCocdrilMovil/Server/utils/date/date_info');
+const userModel = require('../../models/users/usuario');
+const handle = require('../../utils/handle/handle_error');
+const getDateAndTime = require('../../utils/date/date_info');
 
 const bcrypt = require('bcrypt');
 

@@ -1,8 +1,6 @@
-const userModel = require('../../models/users/user');
-const handle = require('../../../../NodejsAlicia/BusherCocdrilMovil/Server/utils/handle/handle_error');
-const getDateAndTime = require('../../../../NodejsAlicia/BusherCocdrilMovil/Server/utils/date/date_info');
-
-const bcrypt = require('bcrypt');
+const userModel = require('../../models/users/usuario');
+const handle = require('../../utils/handle/handle_error');
+const getDateAndTime = require('../../utils/date/date_info');
 
 //Registrar nuevo usuario
 const registerUser = async(req, res) => {
@@ -11,7 +9,6 @@ const registerUser = async(req, res) => {
         const { fecha, hora } = await getDateAndTime();
 
         const user = await userModel.findOne({nombre : body.nombre, usuario : body.usuario});
-        console.log(user);
         if(user){
             return res.status(400).json({
                 success : false,
@@ -22,13 +19,19 @@ const registerUser = async(req, res) => {
 
         const newUser = new userModel({ 
             nombre : body.nombre,
-            puesto : body.puesto,
-            turno : body.turno, 
             password : body.password,
             usuario : body.usuario, 
+            direccion : body.direccion,
+            ciudad : body.ciudad,
+            colonia : body.colonia,
+            telefono : body.telefono,
+            puesto : body.puesto,
+            horario : body.horario,
+            salario : body.salario,
+            turno : body.turno, 
+            id_franquicia : body.id_franquicia,
             fecha_registro : fecha,
             hora_registro : hora,
-            salario : body.salario,
         });
         await newUser.save();
 
@@ -77,7 +80,7 @@ const searchUserByID = async(req, res) => {
 //Obtener todos los usuarios
 const allUsers = async(req, res) => {
     try{
-        const users = await userModel.find();
+        const users = await userModel.find().select('-password');
 
         if(!users || users.length == 0){
             return res.status(404).json({

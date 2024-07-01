@@ -10,6 +10,8 @@ const franchiseModel = new schema({
     colonia : { type : String, required : true, trim: true},
     direccion : { type : String, required : true, trim: true},
     estatus : { type : String, required : true, trim: true},
+    fecha_registro : { type : String, required : true, trim: true},
+    hora_registro : { type : String, required : true, trim: true},
 });
 
 const franchise = mongoose.model('Franquicias', franchiseModel);
