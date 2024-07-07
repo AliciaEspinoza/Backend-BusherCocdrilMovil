@@ -9,7 +9,24 @@ const menuModel = new schema({
         descripcion : { type : String, required : true, trim : true },
         costo : { type : Number, required : true, trim : true },
         estatus : { type : String, required : true, trim : true },
-    }]
+        ingredientes_extra : [{
+            descripcion : { type : String, required : true, trim : true },
+            costo : { type : Number, required : true, trim : true },
+        }]
+    }],
+    combos : [{
+        nombre : { type : String, required : true, trim : true },
+        descripcion : { type : String, required : true, trim : true },
+        costo : { type : Number, required : true, trim : true },
+        estatus : { type : String, required : true, trim : true },
+        extra : [{
+            descripcion : { type : String, required : true, trim : true },
+            costo : { type : Number, required : true, trim : true },
+        }]
+    }],
+    fecha_registro : { type : String, required : true, trim: true},
+    hora_registro : { type : String, required : true, trim: true},
+    estatus : { type : String, required : true, trim : true },
 });
 
 const menu = mongoose.model('Menus', menuModel);

@@ -28,6 +28,7 @@ connectMongoDB();
 //Routes 
 app.use(router);
 
+//Server
 app.listen(port, async () => {
     const { fecha, hora } = await getDateAndTime();
     console.log(`${fecha}, ${hora} API Server on port ${port}`);

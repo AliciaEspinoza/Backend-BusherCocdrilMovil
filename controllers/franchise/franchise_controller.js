@@ -1,4 +1,5 @@
 const franchiseModel = require('../../models/entities/franquicia');
+const userModel = require('../../models/users/usuario');
 const handle = require('../../utils/handle/handle_error');
 const getDateAndTime = require('../../utils/date/date_info');
 
@@ -98,6 +99,81 @@ const searchFranchiseByID = async(req, res) => {
     }
 }
 
+//Buscar todos los empleados de una franquicia
+const searchUsersByFranchise = async(req, res) => {
+    try{
+        const id = req.params.id;
+        if(!id){
+            return res.status(400).json({
+                success : false,
+                errorCode : 400,
+                message : "Id requerido"
+            });
+        }
+
+        const franchise = await franchiseModel.findById(id);
+        if(!franchise){
+            return res.status(404).json({
+                success : false,
+                errorCode : 404,
+                message : 'No existe la franquicia'
+            });
+        }
+
+        const users = await userModel.find({id_franquicia : id}).select('-password');
+        if(!users || users.length <= 0){
+            return res.status(404).json({
+                success : false,
+                errorCode : 404,
+                message : "La franquicia no cuenta con empleados registrados"
+            });
+        }
+
+        return res.status(201).json({
+            success : true,
+            successCode : 201,
+            users : users
+        });
+
+    }catch(error){
+        handle(res, error);
+    }
+};
+
+//Editar datos de una franquicia
+const editFranchise = async(req, res) => {
+    try{
+        const updateData = req.body;
+        const id = req.params.id;
+        if(!id){
+            return res.status(400).json({
+                success : false,
+                errorCode : 400,
+                message : "Id requerido"
+            });
+        }
+
+        const franchise = await franchiseModel.findById(id);
+        if(!franchise){
+            return res.status(404).json({
+                success : false,
+                errorCode : 404,
+                message : "La franquicia no existe"
+            });
+        }
+
+        const updatedFranchise = await franchiseModel.findByIdAndUpdate(id, updateData, { new: true })
+        return res.status(201).json({
+            success: true,
+            successCode: 201,
+            message: "Datos actualizados",
+            data: updatedFranchise
+        });
+    }catch(error){
+        handle(res, error);
+    }
+}
+
 //Eliminar franquicia
 const deleteFranchise = async(req, res) => {
     try{
@@ -116,7 +192,7 @@ const deleteFranchise = async(req, res) => {
             return res.status(404).json({
                 success : false,
                 errorCode : 404,
-                message : "La sucursal no existe"
+                message : "La franquicia no existe"
             });
         }
 
@@ -137,5 +213,7 @@ module.exports = {
     registerFranchise,
     allFranchises,
     searchFranchiseByID,
+    searchUsersByFranchise,
+    editFranchise,
     deleteFranchise,
 };

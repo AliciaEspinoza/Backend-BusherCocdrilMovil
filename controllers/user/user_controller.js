@@ -104,18 +104,17 @@ const allUsers = async(req, res) => {
 //Cambiar password
 const changePassword = async(req, res) => {
     try{
-        const userID = req.params.id;
         const { password } = req.body;
-
-        if (!userID) {
+        const id = req.params.id;
+        if(!id){
             return res.status(400).json({
                 success: false,
                 errorCode: 400,
-                message: 'ID inválido'
+                message: 'Id requerido'
             });
         }
 
-        const user = await userModel.findById(userID);
+        const user = await userModel.findById(id);
         if (!user) {
             return res.status(404).json({
                 success: false,
@@ -145,9 +144,77 @@ const changePassword = async(req, res) => {
     }
 }
 
+//Editar usuario
+const editUser = async(req, res) => {
+    try{
+        const updateData = req.body;
+        const id = req.params.id;
+        if(!id){
+            return res.status(400).json({
+                success: false,
+                errorCode: 400,
+                message: 'Id requerido'
+            });
+        }
+
+        const user = await userModel.findById(id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                errorCode: 404,
+                message: 'El usuario no existe'
+            });
+        }
+
+        const updatedUser = await userModel.findByIdAndUpdate(id, updateData, { new: true })
+        return res.status(201).json({
+            success: true,
+            successCode: 201,
+            message: "Datos actualizados",
+            data: updatedUser
+        });
+    }catch(error){
+        handle(res, error);
+    }
+};
+
+//Eliminar usuario
+const deleteUser = async(req, res) => {
+    try{
+        const id = req.params.id;
+        if(!id){
+            return res.status(400).json({
+                success: false,
+                errorCode: 400,
+                message: 'Id requerido'
+            });
+        }
+
+        const user = await userModel.findById(id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                errorCode: 404,
+                message: 'El usuario no existe'
+            });
+        }
+
+        await userModel.findByIdAndDelete(id);
+        return res.status(201).json({
+            success : true,
+            successCode : 201,
+            message : 'Usuario eliminado'
+        });
+    }catch(error){
+        handle(res, error);
+    }
+};
+
 module.exports = {
     registerUser,
     allUsers,
     searchUserByID,
-    changePassword
+    changePassword,
+    editUser,
+    deleteUser
 }
