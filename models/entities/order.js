@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const schema = mongoose.Schema;
 
 const orderModel = new schema({
+    id_franquicia : { type : mongoose.Schema.Types.ObjectId, ref : 'Franquicias' ,required : true, trim : true },
     folio : { type : String, required : true, trim : true },
     nombre : { type : String, required : true, trim : true },
     iva : { type : Number, default : 0, trim : true },
