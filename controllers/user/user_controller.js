@@ -1,6 +1,7 @@
 const userModel = require('../../models/users/usuario');
 const handle = require('../../utils/handle/handle_error');
 const getDateAndTime = require('../../utils/date/date_info');
+const { isValidObjectId } = require('mongoose');
 
 //Registrar nuevo usuario
 const registerUser = async(req, res) => {
@@ -48,7 +49,7 @@ const registerUser = async(req, res) => {
 //Buscar usuario por id
 const searchUserByID = async(req, res) => {
     try{
-        const userID = req.params.id;
+        const userID = isValidObjectId(req.params.id);
         if(!userID){
             return res.status(400).json({
                 success : true,
@@ -105,7 +106,7 @@ const allUsers = async(req, res) => {
 const changePassword = async(req, res) => {
     try{
         const { password } = req.body;
-        const id = req.params.id;
+        const id = isValidObjectId(req.params.id);
         if(!id){
             return res.status(400).json({
                 success: false,
@@ -148,7 +149,7 @@ const changePassword = async(req, res) => {
 const editUser = async(req, res) => {
     try{
         const updateData = req.body;
-        const id = req.params.id;
+        const id = isValidObjectId(req.params.id);
         if(!id){
             return res.status(400).json({
                 success: false,
@@ -181,7 +182,7 @@ const editUser = async(req, res) => {
 //Eliminar usuario
 const deleteUser = async(req, res) => {
     try{
-        const id = req.params.id;
+        const id = isValidObjectId(req.params.id);
         if(!id){
             return res.status(400).json({
                 success: false,

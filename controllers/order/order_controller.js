@@ -1,6 +1,7 @@
 const orderModel = require('../../models/entities/order');
 const handle = require('../../utils/handle/handle_error');
 const getDateAndTime = require('../../utils/date/date_info');
+const { isValidObjectId } = require('mongoose');
 
 //Registrar orden
 const registerOrder = async(req, res) => {
@@ -33,10 +34,33 @@ const registerOrder = async(req, res) => {
     }
 };
 
+//Consultar todas las ordenes de una franquicia
+const allOrdersByFranchise = async(req, res) => {
+    try{
+        const id_franquicia = isValidObjectId(req.params.id);
+        if(!id_franquicia){
+            return res.status(400).json({
+                success : false,
+                errorCode : 400,
+                message : 'Id franquicia requerido'
+            });
+        }
+
+        const orders = await orderModel.find({ id_franquicia : id_franquicia });
+        return res.status(201).json({
+            success : true,
+            successCode : 201,
+            orders
+        });
+    }catch(error){
+        handle(res, error);
+    }
+}
+
 //Ordenes pendientes
 const backOrders = async(req, res) => {
     try{
-        const id_franquicia = req.params.id;
+        const id_franquicia = isValidObjectId(req.params.id);
         if(!id_franquicia){
             return res.status(400).json({
                 success : false,
@@ -47,9 +71,9 @@ const backOrders = async(req, res) => {
 
         const orders = await orderModel.find({id_franquicia : id_franquicia, estatus : 'pendiente'});
         if(!orders || orders.length == 0){
-            return res.status(400).json({
+            return res.status(404).json({
                 success : false,
-                errorCode : 400,
+                errorCode : 404,
                 message : 'No hay ordenes pendientes'
             });
         }
@@ -69,7 +93,7 @@ const backOrders = async(req, res) => {
 //Ordenes completadas
 const completedOrders = async(req, res) => {
     try{
-        const id_franquicia = req.params.id;
+        const id_franquicia = isValidObjectId(req.params.id);
         if(!id_franquicia){
             return res.status(400).json({
                 success : false,
@@ -80,9 +104,9 @@ const completedOrders = async(req, res) => {
 
         const orders = await orderModel.find({id_franquicia : id_franquicia, estatus : 'completada'});
         if(!orders || orders.length == 0){
-            return res.status(400).json({
+            return res.status(404).json({
                 success : false,
-                errorCode : 400,
+                errorCode : 404,
                 message : 'No hay ordenes completadas'
             });
         }
@@ -102,7 +126,7 @@ const completedOrders = async(req, res) => {
 //Marcar como terminada una orden
 const changeOrderStatus = async(req, res) => {
     try{
-        const id_order = req.params.id;
+        const id_order = isValidObjectId(req.params.id);
         const order = await orderModel.findById(id_order);
         if(!order){
             return res.status(400).json({
@@ -124,6 +148,31 @@ const changeOrderStatus = async(req, res) => {
     }
 };  
 
+//Eliminar todas las ordendes de una franquicia
+const deleteAllOrdersByFranchise = async(req, res) => {
+    try{
+        const id_franquicia = isValidObjectId(req.params.id);
+        if(!id_franquicia){
+            return res.status(400).json({
+                success : false,
+                errorCode : 400,
+                message : 'Id franquicia requerido'
+            });
+        }
+
+        await orderModel.deleteMany({ id_franquicia : id_franquicia });
+
+        return res.status(201).json({
+            success : true,
+            successCode : 201,
+            message : 'Ordenes eliminadas'
+        });
+    }catch(error){
+        handle(res, error);
+    }
+};
+
+//Eliminar coleccion de ordenes
 const deleteAllOrders = async(req, res) => {
     try{
         await orderModel.deleteMany({});
@@ -140,8 +189,10 @@ const deleteAllOrders = async(req, res) => {
 
 module.exports = {
     registerOrder,
+    allOrdersByFranchise,
     backOrders,
     completedOrders,
     changeOrderStatus,
+    deleteAllOrdersByFranchise,
     deleteAllOrders
 }

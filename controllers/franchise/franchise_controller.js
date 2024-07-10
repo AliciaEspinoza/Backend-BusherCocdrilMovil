@@ -2,6 +2,7 @@ const franchiseModel = require('../../models/entities/franquicia');
 const userModel = require('../../models/users/usuario');
 const handle = require('../../utils/handle/handle_error');
 const getDateAndTime = require('../../utils/date/date_info');
+const { isValidObjectId } = require('mongoose');
 
 // Registrar nueva franquicia
 const registerFranchise = async(req, res) => {
@@ -69,7 +70,7 @@ const allFranchises = async(req, res) => {
 //Buscar franquicia por id
 const searchFranchiseByID = async(req, res) => {
     try{
-        const id = req.params.id;
+        const id = isValidObjectId(req.params.id);
         if(!id){
             return res.status(400).json({
                 success : false,
@@ -102,7 +103,7 @@ const searchFranchiseByID = async(req, res) => {
 //Buscar todos los empleados de una franquicia
 const searchUsersByFranchise = async(req, res) => {
     try{
-        const id = req.params.id;
+        const id = isValidObjectId(req.params.id);
         if(!id){
             return res.status(400).json({
                 success : false,
@@ -144,7 +145,7 @@ const searchUsersByFranchise = async(req, res) => {
 const editFranchise = async(req, res) => {
     try{
         const updateData = req.body;
-        const id = req.params.id;
+        const id = isValidObjectId(req.params.id);
         if(!id){
             return res.status(400).json({
                 success : false,

@@ -1,6 +1,7 @@
 const menuModel = require('../../models/entities/menu');
 const handle = require('../../utils/handle/handle_error');
 const getDateAndTime = require('../../utils/date/date_info');
+const { isValidObjectId } = require('mongoose');
 
 //Registrar menu de una franquicia
 const registerMenu = async(req, res) => {
@@ -55,7 +56,7 @@ const allMenus = async(req, res) => {
 //Menu de una franquicia
 const franchiseMenu = async(req, res) => {
     try{
-        const id = req.params.id;
+        const id = isValidObjectId(req.params.id);
         if(!id){
             return res.status(400).json({
                 success : false,
@@ -84,14 +85,77 @@ const franchiseMenu = async(req, res) => {
     }
 }
 
+//Buscar menu por id
+const seachMenuById = async(req, res) => {
+    try{
+        const id = isValidObjectId(req.params.id);
+        if(!id){
+            return res.status(400).json({
+                success : false,
+                errorCode : 400,
+                message : 'Id menu requerido'
+            });
+        }
+
+        const menu = await menuModel.findById(id);
+        if(!menu){
+            return res.status(404).json({
+                success : false,
+                errorCode : 404,
+                message : 'El menu no existe'
+            });
+        }
+
+        return res.status(201).json({
+            success : true,
+            successCode : 201,
+            menu : menu
+        });
+
+    }catch(error){
+        handle(res, error);
+    }
+}
+
 //Agregar productos a un menu de una franquicia
 
 //Agregar combos a un menu de una franquicia
 
-//Eliminar menu de una franquicia
+//Eliminar menu por id de una franquicia
+const deleteMenu = async(req, res) => {
+    try{
+        const id = isValidObjectId(req.params.id);
+        if(!id){
+            return res.status(400).json({
+                success : false,
+                errorCode : 400,
+                message : 'Id menu requerido'
+            });
+        }
+
+        const menu = await menuModel.findByIdAndDelete(id);
+        if(!menu){
+            return res.status(404).json({
+                success : false,
+                errorCode : 404,
+                message : 'El menu no existe'
+            });
+        }
+
+        return res.status(201).json({
+            success : true,
+            successCode : 201,
+            message : 'Menu eliminado'
+        });
+    }catch(error){
+        handle(res, error);
+    }
+}
 
 module.exports = {
     registerMenu,
     allMenus,
-    franchiseMenu
+    seachMenuById,
+    franchiseMenu,
+    deleteMenu
 }
