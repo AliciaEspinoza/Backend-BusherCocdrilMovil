@@ -6,6 +6,7 @@ router.post('/register', controllers.registerMenu);
 router.get('/all-menus', controllers.allMenus);
 router.get('/search-menu/:id', controllers.seachMenuById);
 router.get('/franchise-menu/:id', controllers.franchiseMenu);
+router.put('/edit-menu/:id', controllers.editMenu);
 router.delete('/delete-menu/:id', controllers.deleteMenu);
 
 module.exports = router;

@@ -56,8 +56,9 @@ const allMenus = async(req, res) => {
 //Menu de una franquicia
 const franchiseMenu = async(req, res) => {
     try{
-        const id = isValidObjectId(req.params.id);
-        if(!id){
+        const isValidId = isValidObjectId(req.params.id);
+        const id = req.params.id;
+        if(!isValidId){
             return res.status(400).json({
                 success : false,
                 errorCode : 400,
@@ -88,8 +89,9 @@ const franchiseMenu = async(req, res) => {
 //Buscar menu por id
 const seachMenuById = async(req, res) => {
     try{
-        const id = isValidObjectId(req.params.id);
-        if(!id){
+        const isValidId = isValidObjectId(req.params.id);
+        const id = req.params.id;
+        if(!isValidId){
             return res.status(400).json({
                 success : false,
                 errorCode : 400,
@@ -117,15 +119,47 @@ const seachMenuById = async(req, res) => {
     }
 }
 
-//Agregar productos a un menu de una franquicia
+//Actulizar menu
+const editMenu = async(req, res) => {
+    try{
+        const updateData = req.body;
+        const isValidId = isValidObjectId(req.params.id);
+        const id = req.params.id;
+        if(!isValidId){
+            return res.status(400).json({
+                success : false,
+                errorCode : 400,
+                message : 'Id menu requerido'
+            });
+        }
 
-//Agregar combos a un menu de una franquicia
+        const menu = await menuModel.findById(id);
+        if(!menu){
+            return res.status(404).json({
+                success : false,
+                errorCode : 404,
+                message : 'El menu no existe'
+            });
+        }
+
+        const updateMenu = await menuModel.findByIdAndUpdate(id, updateData, { new : true });
+        return res.status(201).json({
+            success: true,
+            successCode: 201,
+            message: "Menu actualizado",
+            data: updateMenu
+        });
+    }catch(error){
+        handle(res, error);
+    }
+}
 
 //Eliminar menu por id de una franquicia
 const deleteMenu = async(req, res) => {
     try{
-        const id = isValidObjectId(req.params.id);
-        if(!id){
+        const isValidId = isValidObjectId(req.params.id);
+        const id = req.params.id;
+        if(!isValidId){
             return res.status(400).json({
                 success : false,
                 errorCode : 400,
@@ -157,5 +191,6 @@ module.exports = {
     allMenus,
     seachMenuById,
     franchiseMenu,
+    editMenu,
     deleteMenu
 }

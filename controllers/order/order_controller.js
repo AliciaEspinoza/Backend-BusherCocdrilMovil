@@ -37,8 +37,9 @@ const registerOrder = async(req, res) => {
 //Consultar todas las ordenes de una franquicia
 const allOrdersByFranchise = async(req, res) => {
     try{
-        const id_franquicia = isValidObjectId(req.params.id);
-        if(!id_franquicia){
+        const isValidId = isValidObjectId(req.params.id);
+        const id = req.params.id;
+        if(!isValidId){
             return res.status(400).json({
                 success : false,
                 errorCode : 400,
@@ -46,7 +47,7 @@ const allOrdersByFranchise = async(req, res) => {
             });
         }
 
-        const orders = await orderModel.find({ id_franquicia : id_franquicia });
+        const orders = await orderModel.find({ id_franquicia : id });
         return res.status(201).json({
             success : true,
             successCode : 201,
@@ -60,8 +61,9 @@ const allOrdersByFranchise = async(req, res) => {
 //Ordenes pendientes
 const backOrders = async(req, res) => {
     try{
-        const id_franquicia = isValidObjectId(req.params.id);
-        if(!id_franquicia){
+        const isValidId = isValidObjectId(req.params.id);
+        const id = req.params.id;
+        if(!isValidId){
             return res.status(400).json({
                 success : false,
                 errorCode : 400,
@@ -69,7 +71,7 @@ const backOrders = async(req, res) => {
             });
         }
 
-        const orders = await orderModel.find({id_franquicia : id_franquicia, estatus : 'pendiente'});
+        const orders = await orderModel.find({id_franquicia : id, estatus : 'pendiente'});
         if(!orders || orders.length == 0){
             return res.status(404).json({
                 success : false,
@@ -93,8 +95,9 @@ const backOrders = async(req, res) => {
 //Ordenes completadas
 const completedOrders = async(req, res) => {
     try{
-        const id_franquicia = isValidObjectId(req.params.id);
-        if(!id_franquicia){
+        const isValidId = isValidObjectId(req.params.id);
+        const id = req.params.id;
+        if(!isValidId){
             return res.status(400).json({
                 success : false,
                 errorCode : 400,
@@ -102,7 +105,7 @@ const completedOrders = async(req, res) => {
             });
         }
 
-        const orders = await orderModel.find({id_franquicia : id_franquicia, estatus : 'completada'});
+        const orders = await orderModel.find({id_franquicia : id, estatus : 'completada'});
         if(!orders || orders.length == 0){
             return res.status(404).json({
                 success : false,
@@ -126,8 +129,17 @@ const completedOrders = async(req, res) => {
 //Marcar como terminada una orden
 const changeOrderStatus = async(req, res) => {
     try{
-        const id_order = isValidObjectId(req.params.id);
-        const order = await orderModel.findById(id_order);
+        const isValidId = isValidObjectId(req.params.id);
+        const id = req.params.id;
+        if(!isValidId){
+            return res.status(400).json({
+                success : false,
+                errorCode : 400,
+                message : 'Id orden requerido'
+            });
+        }
+
+        const order = await orderModel.findById(id);
         if(!order){
             return res.status(400).json({
                 success : false,
@@ -136,7 +148,7 @@ const changeOrderStatus = async(req, res) => {
             });
         }
 
-        await orderModel.findByIdAndUpdate(id_order, { estatus : 'completada' }, { new : true });
+        await orderModel.findByIdAndUpdate(id, { estatus : 'completada' }, { new : true });
         return res.status(201).json({
             success : true,
             successCode : 201,
@@ -148,11 +160,44 @@ const changeOrderStatus = async(req, res) => {
     }
 };  
 
+//Eliminar orden por id
+const deleteOrder = async(req, res) => {
+    try{
+        const isValidId = isValidObjectId(req.params.id);
+        const id = req.params.id;
+        if(!isValidId){
+            return res.status(400).json({
+                success : false,
+                errorCode : 400,
+                message : 'Id orden requerido' 
+            });
+        }
+
+        const order = await orderModel.findById(id);
+        if(!order){
+            return res.status(404).json({
+                success : false,
+                errorCode : 404,
+                message : 'La orden no existe' 
+            });
+        }
+
+        return res.status(201).json({
+            success : true,
+            successCode : 201,
+            message : 'Orden eliminada' 
+        });
+    }catch(error){
+        handle(res, error);
+    }
+}
+
 //Eliminar todas las ordendes de una franquicia
 const deleteAllOrdersByFranchise = async(req, res) => {
     try{
-        const id_franquicia = isValidObjectId(req.params.id);
-        if(!id_franquicia){
+        const isValidId = isValidObjectId(req.params.id);
+        const id = req.params.id;
+        if(!isValidId){
             return res.status(400).json({
                 success : false,
                 errorCode : 400,
@@ -160,7 +205,7 @@ const deleteAllOrdersByFranchise = async(req, res) => {
             });
         }
 
-        await orderModel.deleteMany({ id_franquicia : id_franquicia });
+        await orderModel.deleteMany({ id_franquicia : id });
 
         return res.status(201).json({
             success : true,
@@ -194,5 +239,6 @@ module.exports = {
     completedOrders,
     changeOrderStatus,
     deleteAllOrdersByFranchise,
+    deleteOrder,
     deleteAllOrders
 }

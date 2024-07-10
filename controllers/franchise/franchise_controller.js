@@ -70,8 +70,9 @@ const allFranchises = async(req, res) => {
 //Buscar franquicia por id
 const searchFranchiseByID = async(req, res) => {
     try{
-        const id = isValidObjectId(req.params.id);
-        if(!id){
+        const isValidId = isValidObjectId(req.params.id);
+        const id = req.params.id;
+        if(!isValidId){
             return res.status(400).json({
                 success : false,
                 errorCode : 400,
@@ -103,8 +104,9 @@ const searchFranchiseByID = async(req, res) => {
 //Buscar todos los empleados de una franquicia
 const searchUsersByFranchise = async(req, res) => {
     try{
-        const id = isValidObjectId(req.params.id);
-        if(!id){
+        const isValidId = isValidObjectId(req.params.id);
+        const id = req.params.id;
+        if(!isValidId){
             return res.status(400).json({
                 success : false,
                 errorCode : 400,
@@ -145,8 +147,9 @@ const searchUsersByFranchise = async(req, res) => {
 const editFranchise = async(req, res) => {
     try{
         const updateData = req.body;
-        const id = isValidObjectId(req.params.id);
-        if(!id){
+        const isValidId = isValidObjectId(req.params.id);
+        const id = req.params.id;
+        if(!isValidId){
             return res.status(400).json({
                 success : false,
                 errorCode : 400,
@@ -178,8 +181,9 @@ const editFranchise = async(req, res) => {
 //Eliminar franquicia
 const deleteFranchise = async(req, res) => {
     try{
+        const isValidId = isValidObjectId(req.params.id);
         const id = req.params.id;
-        if(!id){
+        if(!isValidId){
             return res.status(400).json({
                 success : false,
                 errorCode : 400,

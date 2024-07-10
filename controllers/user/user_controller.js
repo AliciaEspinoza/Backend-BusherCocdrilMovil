@@ -49,8 +49,9 @@ const registerUser = async(req, res) => {
 //Buscar usuario por id
 const searchUserByID = async(req, res) => {
     try{
-        const userID = isValidObjectId(req.params.id);
-        if(!userID){
+        const isValidId = isValidObjectId(req.params.id);
+        const id = req.params.id;
+        if(!isValidId){
             return res.status(400).json({
                 success : true,
                 errorCode : 400,
@@ -58,7 +59,7 @@ const searchUserByID = async(req, res) => {
             }); 
         }
 
-        const user = await userModel.findById(userID).select('-password');
+        const user = await userModel.findById(id).select('-password');
         if(!user){
             return res.status(404).json({
                 success : true,
@@ -106,8 +107,9 @@ const allUsers = async(req, res) => {
 const changePassword = async(req, res) => {
     try{
         const { password } = req.body;
-        const id = isValidObjectId(req.params.id);
-        if(!id){
+        const isValidId = isValidObjectId(req.params.id);
+        const id = req.params.id;
+        if(!isValidId){
             return res.status(400).json({
                 success: false,
                 errorCode: 400,
@@ -149,8 +151,9 @@ const changePassword = async(req, res) => {
 const editUser = async(req, res) => {
     try{
         const updateData = req.body;
-        const id = isValidObjectId(req.params.id);
-        if(!id){
+        const isValidId = isValidObjectId(req.params.id);
+        const id = req.params.id;
+        if(!isValidId){
             return res.status(400).json({
                 success: false,
                 errorCode: 400,
