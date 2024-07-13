@@ -6,23 +6,16 @@ const menuModel = new schema({
     productos : [{
         nombre : { type : String, required : true, trim : true },
         pesaje : { type : String, required : true, trim : true },
+        categoria : {type : String, required : true, trim : true},
         descripcion : { type : String, required : true, trim : true },
         costo : { type : Number, required : true, trim : true },
         estatus : { type : String, required : true, trim : true },
-        ingredientes_extra : [{
-            descripcion : { type : String, required : true, trim : true },
-            costo : { type : Number, required : true, trim : true },
-        }]
     }],
     combos : [{
         nombre : { type : String, required : true, trim : true },
         descripcion : { type : String, required : true, trim : true },
         costo : { type : Number, required : true, trim : true },
         estatus : { type : String, required : true, trim : true },
-        extra : [{
-            descripcion : { type : String, required : true, trim : true },
-            costo : { type : Number, required : true, trim : true },
-        }]
     }],
     fecha_registro : { type : String, required : true, trim: true},
     hora_registro : { type : String, required : true, trim: true},

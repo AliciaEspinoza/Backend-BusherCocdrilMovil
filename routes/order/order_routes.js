@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 
 router.post('/register', controller.registerOrder);
+router.get('/search-order/:id', controller.searchOrder);
 router.get('/all-orders-franchise/:id', controller.allOrdersByFranchise);
 router.get('/back-orders-franchise/:id', controller.backOrders);
 router.get('/completed-orders-franchise/:id', controller.completedOrders);
