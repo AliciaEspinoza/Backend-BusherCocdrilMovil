@@ -160,7 +160,7 @@ const registerOrder = async (req, res) => {
 
         return res.status(201).json({
             success: true,
-            successCode: 201,
+            httpCode: 201,
             message: 'Orden registrada',
             order: orderData,
         });
@@ -177,7 +177,7 @@ const searchOrder = async (req, res) => {
         if (!isValidId) {
             return res.status(400).json({
                 success: false,
-                errorCode: 400,
+                httpCode: 400,
                 message: 'Id orden requerido'
             });
         }
@@ -186,7 +186,7 @@ const searchOrder = async (req, res) => {
         if (!order) {
             return res.status(404).json({
                 success: false,
-                errorCode: 404,
+                httpCode: 404,
                 message: 'La orden no existe'
             });
         }
@@ -267,7 +267,7 @@ const searchOrder = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            successCode: 200,
+            httpCode: 200,
             order: orderData,
         });
     } catch (error) {
@@ -283,7 +283,7 @@ const allOrdersByFranchise = async(req, res) => {
         if(!isValidId){
             return res.status(400).json({
                 success : false,
-                errorCode : 400,
+                httpCode : 400,
                 message : 'Id franquicia requerido'
             });
         }
@@ -291,13 +291,336 @@ const allOrdersByFranchise = async(req, res) => {
         const orders = await orderModel.find({ id_franquicia : id });
         return res.status(201).json({
             success : true,
-            successCode : 201,
+            httpCode : 201,
             orders
         });
     }catch(error){
         handle(res, error);
     }
 }
+
+//Buscar ordenes de una mesa por franquicia
+const ordersByTable = async(req, res) => {
+    try{
+        const isValidId = isValidObjectId(req.params.id);
+        const tableNumber = parseInt(req.params.table);
+        const id = req.params.id;
+        if(!isValidId){
+            return res.status(400).json({
+                success : false,
+                httpCode : 400,
+                message : 'Id franquicia requerido'
+            });
+        }
+
+        if(!tableNumber || tableNumber < 0 || tableNumber > 20){
+            return res.status(400).json({
+                success : false,
+                httpCode : 400,
+                message : 'Numero de mesa invalido/requerido'
+            });
+        }
+
+        const orders = await orderModel.find({
+            id_franquicia : id,
+            mesa : tableNumber,
+        });
+        
+        if(!orders || orders.length < 1){
+            return res.status(404).json({
+                success : false,
+                httpCode : 404,
+                message : `La mesa ${tableNumber} no tiene ordenes`
+            });
+        }
+
+         // Obtener detalles de productos y combos para cada orden
+         const detailedOrders = await Promise.all(orders.map(async (order) => {
+            const productsList = await Promise.all(order.productos.map(async (product) => {
+                const menu = await menuModel.findById(product.id_menu);
+                if (menu) {
+                    const productDetails = menu.productos.id(product.id_producto);
+                    if (productDetails) {
+                        let subtotal = new Decimal(productDetails.costo).times(product.cantidad);
+
+                        // Agregar costo de ingredientes extra
+                        if (product.ingredientes_extra && product.ingredientes_extra.length > 0) {
+                            for (const extra of product.ingredientes_extra) {
+                                const extraCost = new Decimal(extra.costo).times(product.cantidad);
+                                subtotal = subtotal.plus(extraCost);
+                            }
+                        }
+
+                        return {
+                            ...productDetails.toObject(),
+                            cantidad: product.cantidad,
+                            ingredientes_extra: product.ingredientes_extra,
+                            subtotal: subtotal.toFixed(2)
+                        };
+                    }
+                }
+                return null;
+            }));
+
+            const combosList = await Promise.all(order.combos.map(async (combo) => {
+                const menu = await menuModel.findById(combo.id_menu);
+                if (menu) {
+                    const comboDetails = menu.combos.id(combo.id_combo);
+                    if (comboDetails) {
+                        let subtotal = new Decimal(comboDetails.costo).times(combo.cantidad);
+
+                        // Agregar costo de ingredientes extra
+                        if (combo.ingredientes_extra && combo.ingredientes_extra.length > 0) {
+                            for (const extra of combo.ingredientes_extra) {
+                                const extraCost = new Decimal(extra.costo).times(combo.cantidad);
+                                subtotal = subtotal.plus(extraCost);
+                            }
+                        }
+
+                        return {
+                            ...comboDetails.toObject(),
+                            cantidad: combo.cantidad,
+                            ingredientes_extra: combo.ingredientes_extra,
+                            subtotal: subtotal.toFixed(2)
+                        };
+                    }
+                }
+                return null;
+            }));
+
+            return {
+                ...order.toObject(),
+                productos: productsList.filter(p => p !== null),
+                combos: combosList.filter(c => c !== null)
+            };
+        }));
+
+        return res.status(200).json({
+            success: true,
+            httpCode: 200,
+            orders: detailedOrders,
+            total: detailedOrders.length
+        });
+    }catch(error){
+        handle(res, error);
+    }
+};
+
+//Ordenes completadas de una mesa por franquicia
+const completedOrdersByTable = async(req, res) => {
+    try{
+        const isValidId = isValidObjectId(req.params.id);
+        const tableNumber = parseInt(req.params.table);
+        const id = req.params.id;
+        if(!isValidId){
+            return res.status(400).json({
+                success : false,
+                httpCode : 400,
+                message : 'Id franquicia requerido'
+            });
+        }
+
+        if(!tableNumber || tableNumber < 0 || tableNumber > 20){
+            return res.status(400).json({
+                success : false,
+                httpCode : 400,
+                message : 'Numero de mesa invalido/requerido'
+            });
+        }
+
+        const orders = await orderModel.find({
+            id_franquicia : id,
+            mesa : tableNumber,
+            estatus : 'completada'
+        });
+        
+        if(!orders || orders.length < 1){
+            return res.status(404).json({
+                success : false,
+                httpCode : 404,
+                message : `La mesa ${tableNumber} no tiene ordenes completadas`
+            });
+        }
+
+         // Obtener detalles de productos y combos para cada orden
+         const detailedOrders = await Promise.all(orders.map(async (order) => {
+            const productsList = await Promise.all(order.productos.map(async (product) => {
+                const menu = await menuModel.findById(product.id_menu);
+                if (menu) {
+                    const productDetails = menu.productos.id(product.id_producto);
+                    if (productDetails) {
+                        let subtotal = new Decimal(productDetails.costo).times(product.cantidad);
+
+                        // Agregar costo de ingredientes extra
+                        if (product.ingredientes_extra && product.ingredientes_extra.length > 0) {
+                            for (const extra of product.ingredientes_extra) {
+                                const extraCost = new Decimal(extra.costo).times(product.cantidad);
+                                subtotal = subtotal.plus(extraCost);
+                            }
+                        }
+
+                        return {
+                            ...productDetails.toObject(),
+                            cantidad: product.cantidad,
+                            ingredientes_extra: product.ingredientes_extra,
+                            subtotal: subtotal.toFixed(2)
+                        };
+                    }
+                }
+                return null;
+            }));
+
+            const combosList = await Promise.all(order.combos.map(async (combo) => {
+                const menu = await menuModel.findById(combo.id_menu);
+                if (menu) {
+                    const comboDetails = menu.combos.id(combo.id_combo);
+                    if (comboDetails) {
+                        let subtotal = new Decimal(comboDetails.costo).times(combo.cantidad);
+
+                        // Agregar costo de ingredientes extra
+                        if (combo.ingredientes_extra && combo.ingredientes_extra.length > 0) {
+                            for (const extra of combo.ingredientes_extra) {
+                                const extraCost = new Decimal(extra.costo).times(combo.cantidad);
+                                subtotal = subtotal.plus(extraCost);
+                            }
+                        }
+
+                        return {
+                            ...comboDetails.toObject(),
+                            cantidad: combo.cantidad,
+                            ingredientes_extra: combo.ingredientes_extra,
+                            subtotal: subtotal.toFixed(2)
+                        };
+                    }
+                }
+                return null;
+            }));
+
+            return {
+                ...order.toObject(),
+                productos: productsList.filter(p => p !== null),
+                combos: combosList.filter(c => c !== null)
+            };
+        }));
+
+        return res.status(200).json({
+            success: true,
+            httpCode: 200,
+            orders: detailedOrders,
+            total: detailedOrders.length
+        });
+    }catch(error){
+        handle(res, error);
+    }
+};
+
+//Ordenes pendientes de una mesa por franquicia
+const backOrdersByTable = async(req, res) => {
+    try{
+        const isValidId = isValidObjectId(req.params.id);
+        const tableNumber = parseInt(req.params.table);
+        const id = req.params.id;
+        if(!isValidId){
+            return res.status(400).json({
+                success : false,
+                httpCode : 400,
+                message : 'Id franquicia requerido'
+            });
+        }
+
+        if(!tableNumber || tableNumber < 0 || tableNumber > 20){
+            return res.status(400).json({
+                success : false,
+                httpCode : 400,
+                message : 'Numero de mesa invalido/requerido'
+            });
+        }
+
+        const orders = await orderModel.find({
+            id_franquicia : id,
+            mesa : tableNumber,
+            estatus : 'pendiente'
+        });
+        
+        if(!orders || orders.length < 1){
+            return res.status(404).json({
+                success : false,
+                httpCode : 404,
+                message : `La mesa ${tableNumber} no tiene ordenes pendientes`
+            });
+        }
+
+         // Obtener detalles de productos y combos para cada orden
+         const detailedOrders = await Promise.all(orders.map(async (order) => {
+            const productsList = await Promise.all(order.productos.map(async (product) => {
+                const menu = await menuModel.findById(product.id_menu);
+                if (menu) {
+                    const productDetails = menu.productos.id(product.id_producto);
+                    if (productDetails) {
+                        let subtotal = new Decimal(productDetails.costo).times(product.cantidad);
+
+                        // Agregar costo de ingredientes extra
+                        if (product.ingredientes_extra && product.ingredientes_extra.length > 0) {
+                            for (const extra of product.ingredientes_extra) {
+                                const extraCost = new Decimal(extra.costo).times(product.cantidad);
+                                subtotal = subtotal.plus(extraCost);
+                            }
+                        }
+
+                        return {
+                            ...productDetails.toObject(),
+                            cantidad: product.cantidad,
+                            ingredientes_extra: product.ingredientes_extra,
+                            subtotal: subtotal.toFixed(2)
+                        };
+                    }
+                }
+                return null;
+            }));
+
+            const combosList = await Promise.all(order.combos.map(async (combo) => {
+                const menu = await menuModel.findById(combo.id_menu);
+                if (menu) {
+                    const comboDetails = menu.combos.id(combo.id_combo);
+                    if (comboDetails) {
+                        let subtotal = new Decimal(comboDetails.costo).times(combo.cantidad);
+
+                        // Agregar costo de ingredientes extra
+                        if (combo.ingredientes_extra && combo.ingredientes_extra.length > 0) {
+                            for (const extra of combo.ingredientes_extra) {
+                                const extraCost = new Decimal(extra.costo).times(combo.cantidad);
+                                subtotal = subtotal.plus(extraCost);
+                            }
+                        }
+
+                        return {
+                            ...comboDetails.toObject(),
+                            cantidad: combo.cantidad,
+                            ingredientes_extra: combo.ingredientes_extra,
+                            subtotal: subtotal.toFixed(2)
+                        };
+                    }
+                }
+                return null;
+            }));
+
+            return {
+                ...order.toObject(),
+                productos: productsList.filter(p => p !== null),
+                combos: combosList.filter(c => c !== null)
+            };
+        }));
+
+        return res.status(200).json({
+            success: true,
+            httpCode: 200,
+            orders: detailedOrders,
+            total: detailedOrders.length
+        });
+    }catch(error){
+        handle(res, error);
+    }
+};
 
 //Ordenes pendientes
 const backOrders = async(req, res) => {
@@ -307,7 +630,7 @@ const backOrders = async(req, res) => {
         if(!isValidId){
             return res.status(400).json({
                 success : false,
-                errorCode : 400,
+                httpCode : 400,
                 message : 'Id franquicia requerido'
             });
         }
@@ -316,14 +639,14 @@ const backOrders = async(req, res) => {
         if(!orders || orders.length == 0){
             return res.status(404).json({
                 success : false,
-                errorCode : 404,
+                httpCode : 404,
                 message : 'No hay ordenes pendientes'
             });
         }
 
         return res.status(201).json({
             success : true,
-            successCode : 201,
+            httpCode : 201,
             count : orders.length,
             orders
         });
@@ -341,7 +664,7 @@ const completedOrders = async(req, res) => {
         if(!isValidId){
             return res.status(400).json({
                 success : false,
-                errorCode : 400,
+                httpCode : 400,
                 message : 'Id franquicia requerido'
             });
         }
@@ -350,14 +673,14 @@ const completedOrders = async(req, res) => {
         if(!orders || orders.length == 0){
             return res.status(404).json({
                 success : false,
-                errorCode : 404,
+                httpCode : 404,
                 message : 'No hay ordenes completadas'
             });
         }
 
         return res.status(201).json({
             success : true,
-            successCode : 201,
+            httpCode : 201,
             count : orders.length,
             orders
         });
@@ -375,7 +698,7 @@ const changeOrderStatus = async(req, res) => {
         if(!isValidId){
             return res.status(400).json({
                 success : false,
-                errorCode : 400,
+                httpCode : 400,
                 message : 'Id orden requerido'
             });
         }
@@ -384,7 +707,7 @@ const changeOrderStatus = async(req, res) => {
         if(!order){
             return res.status(400).json({
                 success : false,
-                errorCode : 400,
+                httpCode : 400,
                 message : 'Id orden requerido'
             });
         }
@@ -392,7 +715,7 @@ const changeOrderStatus = async(req, res) => {
         await orderModel.findByIdAndUpdate(id, { estatus : 'completada' }, { new : true });
         return res.status(201).json({
             success : true,
-            successCode : 201,
+            httpCode : 201,
             message : 'Orden actualizada',
         });
 
@@ -409,7 +732,7 @@ const deleteOrder = async(req, res) => {
         if(!isValidId){
             return res.status(400).json({
                 success : false,
-                errorCode : 400,
+                httpCode : 400,
                 message : 'Id orden requerido' 
             });
         }
@@ -418,14 +741,14 @@ const deleteOrder = async(req, res) => {
         if(!order){
             return res.status(404).json({
                 success : false,
-                errorCode : 404,
+                httpCode : 404,
                 message : 'La orden no existe' 
             });
         }
 
         return res.status(201).json({
             success : true,
-            successCode : 201,
+            httpCode : 201,
             message : 'Orden eliminada' 
         });
     }catch(error){
@@ -441,7 +764,7 @@ const deleteAllOrdersByFranchise = async(req, res) => {
         if(!isValidId){
             return res.status(400).json({
                 success : false,
-                errorCode : 400,
+                httpCode : 400,
                 message : 'Id franquicia requerido'
             });
         }
@@ -450,7 +773,7 @@ const deleteAllOrdersByFranchise = async(req, res) => {
 
         return res.status(201).json({
             success : true,
-            successCode : 201,
+            httpCode : 201,
             message : 'Ordenes eliminadas'
         });
     }catch(error){
@@ -465,7 +788,7 @@ const deleteAllOrders = async(req, res) => {
 
         return res.status(201).json({
             success : true,
-            successCode : 201,
+            httpCode : 201,
             message : 'Todas las ordenes han sido eliminadas'
         });
     }catch(error){
@@ -477,8 +800,11 @@ module.exports = {
     registerOrder,
     searchOrder,
     allOrdersByFranchise,
+    ordersByTable,
     backOrders,
+    backOrdersByTable,
     completedOrders,
+    completedOrdersByTable,
     changeOrderStatus,
     deleteAllOrdersByFranchise,
     deleteOrder,
