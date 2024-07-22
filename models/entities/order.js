@@ -18,7 +18,8 @@ const orderModel = new schema({
     productos : [{
         id_producto : { type : mongoose.Schema.Types.ObjectId, required : true, trim : true },
         id_menu : { type : mongoose.Schema.Types.ObjectId, ref : 'Menus' ,required : true, trim : true },
-        cantidad : { type : Number, required : true},
+        cantidad : { type : Number, required : true },
+        subtotal : { type : Number, required : true, default : 0 },
         notas : { type : String, trim : true },
         ingredientes_extra : [{
             descripcion : { type : String, required : true, trim : true },
@@ -29,6 +30,7 @@ const orderModel = new schema({
         id_combo : { type : mongoose.Schema.Types.ObjectId, required : true, trim : true },
         id_menu : { type : mongoose.Schema.Types.ObjectId, ref : 'Menus' ,required : true, trim : true },
         cantidad : { type : Number, required : true},
+        subtotal : { type : Number, required : true, default : 0 },
         notas : { type : String, trim : true },
         ingredientes_extra : [{
             descripcion : { type : String, required : true, trim : true },
