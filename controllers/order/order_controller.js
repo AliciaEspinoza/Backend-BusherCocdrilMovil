@@ -8,7 +8,7 @@ const Decimal = require('decimal.js');
 //Registrar orden
 const registerOrder = async (req, res) => {
     try {
-        const { id_franquicia, folio, nombre, estatus, mesa, mesero } = req.body;
+        const { id_franquicia, folio, nombre_cliente, tipo_orden, estatus, mesa, mesero } = req.body;
         const prod = req.body.productos;
         const comb = req.body.combos;
         const { fecha, hora } = await getDateAndTime();
@@ -92,7 +92,8 @@ const registerOrder = async (req, res) => {
         const newOrder = new orderModel({
             id_franquicia,
             folio,
-            nombre,
+            nombre_cliente,
+            tipo_orden,
             productos: updatedProductos,
             combos: updatedCombos,
             estatus,
@@ -278,8 +279,8 @@ const searchOrder = async (req, res) => {
 //Consultar todas las ordenes de una franquicia
 const allOrdersByFranchise = async(req, res) => {
     try{
-        const isValidId = isValidObjectId(req.params.id);
-        const id = req.params.id;
+        const isValidId = isValidObjectId(req.params.franchise);
+        const id = req.params.franchise;
         if(!isValidId){
             return res.status(400).json({
                 success : false,
@@ -302,9 +303,9 @@ const allOrdersByFranchise = async(req, res) => {
 //Buscar ordenes de una mesa por franquicia
 const ordersByTable = async(req, res) => {
     try{
-        const isValidId = isValidObjectId(req.params.id);
+        const isValidId = isValidObjectId(req.params.franchise);
         const tableNumber = parseInt(req.params.table);
-        const id = req.params.id;
+        const id = req.params.franchise;
         if(!isValidId){
             return res.status(400).json({
                 success : false,
@@ -409,9 +410,9 @@ const ordersByTable = async(req, res) => {
 //Ordenes completadas de una mesa por franquicia
 const completedOrdersByTable = async(req, res) => {
     try{
-        const isValidId = isValidObjectId(req.params.id);
+        const isValidId = isValidObjectId(req.params.franchise);
         const tableNumber = parseInt(req.params.table);
-        const id = req.params.id;
+        const id = req.params.franchise;
         if(!isValidId){
             return res.status(400).json({
                 success : false,
@@ -517,9 +518,9 @@ const completedOrdersByTable = async(req, res) => {
 //Ordenes pendientes de una mesa por franquicia
 const backOrdersByTable = async(req, res) => {
     try{
-        const isValidId = isValidObjectId(req.params.id);
+        const isValidId = isValidObjectId(req.params.franchise);
         const tableNumber = parseInt(req.params.table);
-        const id = req.params.id;
+        const id = req.params.franchise;
         if(!isValidId){
             return res.status(400).json({
                 success : false,
@@ -623,10 +624,10 @@ const backOrdersByTable = async(req, res) => {
 };
 
 //Ordenes pendientes
-const backOrders = async(req, res) => {
+const backOrdersRestaurant = async(req, res) => {
     try{
-        const isValidId = isValidObjectId(req.params.id);
-        const id = req.params.id;
+        const isValidId = isValidObjectId(req.params.franchise);
+        const id = req.params.franchise;
         if(!isValidId){
             return res.status(400).json({
                 success : false,
@@ -657,10 +658,10 @@ const backOrders = async(req, res) => {
 };
 
 //Ordenes completadas
-const completedOrders = async(req, res) => {
+const completedOrdersRestaurant = async(req, res) => {
     try{
-        const isValidId = isValidObjectId(req.params.id);
-        const id = req.params.id;
+        const isValidId = isValidObjectId(req.params.franchise);
+        const id = req.params.franchise;
         if(!isValidId){
             return res.status(400).json({
                 success : false,
@@ -759,8 +760,8 @@ const deleteOrder = async(req, res) => {
 //Eliminar todas las ordendes de una franquicia
 const deleteAllOrdersByFranchise = async(req, res) => {
     try{
-        const isValidId = isValidObjectId(req.params.id);
-        const id = req.params.id;
+        const isValidId = isValidObjectId(req.params.franchise);
+        const id = req.params.franchise;
         if(!isValidId){
             return res.status(400).json({
                 success : false,
@@ -801,9 +802,9 @@ module.exports = {
     searchOrder,
     allOrdersByFranchise,
     ordersByTable,
-    backOrders,
+    backOrdersRestaurant,
     backOrdersByTable,
-    completedOrders,
+    completedOrdersRestaurant,
     completedOrdersByTable,
     changeOrderStatus,
     deleteAllOrdersByFranchise,
