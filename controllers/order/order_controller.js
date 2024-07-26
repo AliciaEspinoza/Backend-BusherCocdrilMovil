@@ -432,7 +432,8 @@ const completedOrdersByTable = async(req, res) => {
         const orders = await orderModel.find({
             id_franquicia : id,
             mesa : tableNumber,
-            estatus : 'completada'
+            estatus : 'completada',
+            tipo_orden : 'restaurante'
         });
         
         if(!orders || orders.length < 1){
@@ -540,7 +541,8 @@ const backOrdersByTable = async(req, res) => {
         const orders = await orderModel.find({
             id_franquicia : id,
             mesa : tableNumber,
-            estatus : 'pendiente'
+            estatus : 'pendiente',
+            tipo_orden : 'restaurante'
         });
         
         if(!orders || orders.length < 1){
@@ -548,6 +550,204 @@ const backOrdersByTable = async(req, res) => {
                 success : false,
                 httpCode : 404,
                 message : `La mesa ${tableNumber} no tiene ordenes pendientes`
+            });
+        }
+
+         // Obtener detalles de productos y combos para cada orden
+         const detailedOrders = await Promise.all(orders.map(async (order) => {
+            const productsList = await Promise.all(order.productos.map(async (product) => {
+                const menu = await menuModel.findById(product.id_menu);
+                if (menu) {
+                    const productDetails = menu.productos.id(product.id_producto);
+                    if (productDetails) {
+                        let subtotal = new Decimal(productDetails.costo).times(product.cantidad);
+
+                        // Agregar costo de ingredientes extra
+                        if (product.ingredientes_extra && product.ingredientes_extra.length > 0) {
+                            for (const extra of product.ingredientes_extra) {
+                                const extraCost = new Decimal(extra.costo).times(product.cantidad);
+                                subtotal = subtotal.plus(extraCost);
+                            }
+                        }
+
+                        return {
+                            ...productDetails.toObject(),
+                            cantidad: product.cantidad,
+                            ingredientes_extra: product.ingredientes_extra,
+                            subtotal: subtotal.toFixed(2)
+                        };
+                    }
+                }
+                return null;
+            }));
+
+            const combosList = await Promise.all(order.combos.map(async (combo) => {
+                const menu = await menuModel.findById(combo.id_menu);
+                if (menu) {
+                    const comboDetails = menu.combos.id(combo.id_combo);
+                    if (comboDetails) {
+                        let subtotal = new Decimal(comboDetails.costo).times(combo.cantidad);
+
+                        // Agregar costo de ingredientes extra
+                        if (combo.ingredientes_extra && combo.ingredientes_extra.length > 0) {
+                            for (const extra of combo.ingredientes_extra) {
+                                const extraCost = new Decimal(extra.costo).times(combo.cantidad);
+                                subtotal = subtotal.plus(extraCost);
+                            }
+                        }
+
+                        return {
+                            ...comboDetails.toObject(),
+                            cantidad: combo.cantidad,
+                            ingredientes_extra: combo.ingredientes_extra,
+                            subtotal: subtotal.toFixed(2)
+                        };
+                    }
+                }
+                return null;
+            }));
+
+            return {
+                ...order.toObject(),
+                productos: productsList.filter(p => p !== null),
+                combos: combosList.filter(c => c !== null)
+            };
+        }));
+
+        return res.status(200).json({
+            success: true,
+            httpCode: 200,
+            orders: detailedOrders,
+            total: detailedOrders.length
+        });
+    }catch(error){
+        handle(res, error);
+    }
+};
+
+//Ordenes completadas a domilicio por franquicia
+const completedOrdersAtHome = async(req, res) => {
+    try{
+        const isValidId = isValidObjectId(req.params.franchise);
+        const id = req.params.franchise;
+        if(!isValidId){
+            return res.status(400).json({
+                success : false,
+                httpCode : 400,
+                message : 'Id franquicia requerido'
+            });
+        }
+
+        const orders = await orderModel.find({
+            id_franquicia : id,
+            estatus : 'completada',
+            tipo_orden : 'domicilio'
+        });
+        
+        if(!orders || orders.length < 1){
+            return res.status(404).json({
+                success : false,
+                httpCode : 404,
+                message : `No hay ordenes completadas a domicilio`
+            });
+        }
+
+         // Obtener detalles de productos y combos para cada orden
+         const detailedOrders = await Promise.all(orders.map(async (order) => {
+            const productsList = await Promise.all(order.productos.map(async (product) => {
+                const menu = await menuModel.findById(product.id_menu);
+                if (menu) {
+                    const productDetails = menu.productos.id(product.id_producto);
+                    if (productDetails) {
+                        let subtotal = new Decimal(productDetails.costo).times(product.cantidad);
+
+                        // Agregar costo de ingredientes extra
+                        if (product.ingredientes_extra && product.ingredientes_extra.length > 0) {
+                            for (const extra of product.ingredientes_extra) {
+                                const extraCost = new Decimal(extra.costo).times(product.cantidad);
+                                subtotal = subtotal.plus(extraCost);
+                            }
+                        }
+
+                        return {
+                            ...productDetails.toObject(),
+                            cantidad: product.cantidad,
+                            ingredientes_extra: product.ingredientes_extra,
+                            subtotal: subtotal.toFixed(2)
+                        };
+                    }
+                }
+                return null;
+            }));
+
+            const combosList = await Promise.all(order.combos.map(async (combo) => {
+                const menu = await menuModel.findById(combo.id_menu);
+                if (menu) {
+                    const comboDetails = menu.combos.id(combo.id_combo);
+                    if (comboDetails) {
+                        let subtotal = new Decimal(comboDetails.costo).times(combo.cantidad);
+
+                        // Agregar costo de ingredientes extra
+                        if (combo.ingredientes_extra && combo.ingredientes_extra.length > 0) {
+                            for (const extra of combo.ingredientes_extra) {
+                                const extraCost = new Decimal(extra.costo).times(combo.cantidad);
+                                subtotal = subtotal.plus(extraCost);
+                            }
+                        }
+
+                        return {
+                            ...comboDetails.toObject(),
+                            cantidad: combo.cantidad,
+                            ingredientes_extra: combo.ingredientes_extra,
+                            subtotal: subtotal.toFixed(2)
+                        };
+                    }
+                }
+                return null;
+            }));
+
+            return {
+                ...order.toObject(),
+                productos: productsList.filter(p => p !== null),
+                combos: combosList.filter(c => c !== null)
+            };
+        }));
+
+        return res.status(200).json({
+            success: true,
+            httpCode: 200,
+            orders: detailedOrders,
+            total: detailedOrders.length
+        });
+    }catch(error){
+        handle(res, error);
+    }
+};
+
+//Ordenes pendientes a domilicio por franquicia
+const backOrdersAtHome = async(req, res) => {
+    try{
+        const isValidId = isValidObjectId(req.params.franchise);
+        const id = req.params.franchise;
+        if(!isValidId){
+            return res.status(400).json({
+                success : false,
+                httpCode : 400,
+                message : 'Id franquicia requerido'
+            });
+        }
+
+        const orders = await orderModel.find({
+            id_franquicia : id,
+            estatus : 'pendiente',
+            tipo_orden : 'domicilio'
+        });
+        
+        if(!orders || orders.length < 1){
+            return res.status(404).json({
+                success : false,
+                httpCode : 404,
+                message : `No hay ordenes pendientes a domicilio`
             });
         }
 
@@ -804,7 +1004,9 @@ module.exports = {
     ordersByTable,
     backOrdersRestaurant,
     backOrdersByTable,
+    backOrdersAtHome,
     completedOrdersRestaurant,
+    completedOrdersAtHome,
     completedOrdersByTable,
     changeOrderStatus,
     deleteAllOrdersByFranchise,
