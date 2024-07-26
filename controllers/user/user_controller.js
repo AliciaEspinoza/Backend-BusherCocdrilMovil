@@ -13,7 +13,7 @@ const registerUser = async(req, res) => {
         if(user){
             return res.status(400).json({
                 success : false,
-                errorCode : 400,
+                httpCode : 400,
                 message : 'Este usuario ya existe'
             });
         }
@@ -54,7 +54,7 @@ const searchUserByID = async(req, res) => {
         if(!isValidId){
             return res.status(400).json({
                 success : true,
-                errorCode : 400,
+                httpCode : 400,
                 message : 'ID invalido'
             }); 
         }
@@ -63,7 +63,7 @@ const searchUserByID = async(req, res) => {
         if(!user){
             return res.status(404).json({
                 success : true,
-                errorCode : 404,
+                httpCode : 404,
                 message : 'El usuario no existe'
             });
         }
@@ -87,7 +87,7 @@ const allUsers = async(req, res) => {
         if(!users || users.length == 0){
             return res.status(404).json({
                 success : false,
-                errorCode : 404,
+                httpCode : 404,
                 message : 'No hay usuarios registrados'
             });
         }
@@ -112,7 +112,7 @@ const changePassword = async(req, res) => {
         if(!isValidId){
             return res.status(400).json({
                 success: false,
-                errorCode: 400,
+                httpCode: 400,
                 message: 'Id requerido'
             });
         }
@@ -121,7 +121,7 @@ const changePassword = async(req, res) => {
         if (!user) {
             return res.status(404).json({
                 success: false,
-                errorCode: 404,
+                httpCode: 404,
                 message: 'El usuario no existe'
             });
         }
@@ -129,7 +129,7 @@ const changePassword = async(req, res) => {
         if (!password) {
             return res.status(400).json({
                 success: false,
-                errorCode: 400,
+                httpCode: 400,
                 message: 'La contraseña es requerida'
             });
         }
@@ -156,7 +156,7 @@ const editUser = async(req, res) => {
         if(!isValidId){
             return res.status(400).json({
                 success: false,
-                errorCode: 400,
+                httpCode: 400,
                 message: 'Id requerido'
             });
         }
@@ -165,7 +165,7 @@ const editUser = async(req, res) => {
         if (!user) {
             return res.status(404).json({
                 success: false,
-                errorCode: 404,
+                httpCode: 404,
                 message: 'El usuario no existe'
             });
         }
@@ -185,11 +185,12 @@ const editUser = async(req, res) => {
 //Eliminar usuario
 const deleteUser = async(req, res) => {
     try{
-        const id = isValidObjectId(req.params.id);
-        if(!id){
+        const isValidId = isValidObjectId(req.params.id);
+        const id = req.params.id;
+        if(!isValidId){
             return res.status(400).json({
                 success: false,
-                errorCode: 400,
+                httpCode: 400,
                 message: 'Id requerido'
             });
         }
@@ -198,7 +199,7 @@ const deleteUser = async(req, res) => {
         if (!user) {
             return res.status(404).json({
                 success: false,
-                errorCode: 404,
+                httpCode: 404,
                 message: 'El usuario no existe'
             });
         }

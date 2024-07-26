@@ -1,6 +1,6 @@
 const userModel = require('../../models/users/usuario');
 const handle = require('../../utils/handle/handle_error');
-const getDateAndTime = require('../../utils/date/date_info');
+const { createToken } = require('../../utils/user/user_utils'); 
 
 const bcrypt = require('bcrypt');
 
@@ -18,9 +18,14 @@ const login = async(req, res) => {
         }
 
         if(bcrypt.compareSync(password, user.password)){
-            return res.status(200).json({
+
+            const { token } = await createToken(user);
+
+            return res.status(201).json({
                 success : true,
+                httpCode : 201,
                 message : 'Sesion iniciada',
+                token
             });
         }else{
             return res.status(401).json({
