@@ -27,7 +27,36 @@ async function createToken(user){
     }
 }
 
+async function getIdFromToken(token){
+    try{
+        if(!token){
+            throw new Error('Token no proporcionado');
+        }
+
+        const decoded = jwt.verify(token, process.env.SECRET_KEY);
+        return decoded.id;
+    }catch(error){
+        console.error(error);
+        throw new Error('Error al obtener el id del token');
+    }
+}
+
+async function getIdFranchiseFromToken(token){
+    try{
+        if(!token){
+            throw new Error('Token no proporcionado');
+        }
+
+        const decoded = jwt.verify(token, process.env.SECRET_KEY);
+        return decoded.franquicia;
+    }catch(error){
+        console.error(error);
+        throw new Error('Error al obtener el id de la franquicia del token');
+    }
+}
+
 module.exports = {
     createToken,
-
+    getIdFromToken,
+    getIdFranchiseFromToken
 } 

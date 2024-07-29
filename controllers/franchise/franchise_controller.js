@@ -3,6 +3,7 @@ const userModel = require('../../models/users/usuario');
 const handle = require('../../utils/handle/handle_error');
 const getDateAndTime = require('../../utils/date/date_info');
 const { isValidObjectId } = require('mongoose');
+const userUtils = require('../../utils/user/user_utils');
 
 // Registrar nueva franquicia
 const registerFranchise = async(req, res) => {
@@ -14,7 +15,7 @@ const registerFranchise = async(req, res) => {
         if(franchise){
             return res.status(400).json({
                 success : false,
-                errorCode : 400,
+                httpCode : 400,
                 message : 'Esta franquicia ya ha sido registrada'
             });
         }
@@ -35,7 +36,7 @@ const registerFranchise = async(req, res) => {
 
         res.status(201).json({
             success : true,
-            successCode : 201,
+            httpCode : 201,
             message : 'Franquicia registrada'
         });
     }catch(error){
@@ -51,14 +52,14 @@ const allFranchises = async(req, res) => {
         if(!franchises || franchises.length == 0){
             return res.status(404).json({
                 success : false,
-                errorCode : 404,
+                httpCode : 404,
                 message : 'No hay franquicias registradas'
             });
         }
 
         return res.status(200).json({
             success : true,
-            successCode : 200,
+            httpCode : 200,
             franchises : franchises
         });
 
@@ -75,24 +76,23 @@ const searchFranchiseByID = async(req, res) => {
         if(!isValidId){
             return res.status(400).json({
                 success : false,
-                errorCode : 400,
+                httpCode : 400,
                 message : "Id requerido"
             });
         }
 
         const franchise = await franchiseModel.findById(id);
-
         if(!franchise){
             return res.status(404).json({
                 success : false,
-                errorCode : 404,
+                httpCode : 404,
                 message : 'No existe la franquicia'
             });
         }
 
         return res.status(201).json({
             success : true,
-            successCode : 201,
+            httpCode : 201,
             franchise : franchise
         });
 
@@ -104,37 +104,37 @@ const searchFranchiseByID = async(req, res) => {
 //Buscar todos los empleados de una franquicia
 const searchUsersByFranchise = async(req, res) => {
     try{
-        const isValidId = isValidObjectId(req.params.id);
-        const id = req.params.id;
+        const idFranchise = await userUtils.getIdFranchiseFromToken(req.body.token);
+        const isValidId = isValidObjectId(idFranchise);
         if(!isValidId){
             return res.status(400).json({
                 success : false,
-                errorCode : 400,
+                httpCode : 400,
                 message : "Id requerido"
             });
         }
 
-        const franchise = await franchiseModel.findById(id);
+        const franchise = await franchiseModel.findById(idFranchise);
         if(!franchise){
             return res.status(404).json({
                 success : false,
-                errorCode : 404,
+                httpCode : 404,
                 message : 'No existe la franquicia'
             });
         }
 
-        const users = await userModel.find({id_franquicia : id}).select('-password');
+        const users = await userModel.find({id_franquicia : idFranchise}).select('-password');
         if(!users || users.length <= 0){
             return res.status(404).json({
                 success : false,
-                errorCode : 404,
+                httpCode : 404,
                 message : "La franquicia no cuenta con empleados registrados"
             });
         }
 
         return res.status(201).json({
             success : true,
-            successCode : 201,
+            httpCode : 201,
             users : users
         });
 
@@ -152,7 +152,7 @@ const editFranchise = async(req, res) => {
         if(!isValidId){
             return res.status(400).json({
                 success : false,
-                errorCode : 400,
+                httpCode : 400,
                 message : "Id requerido"
             });
         }
@@ -161,7 +161,7 @@ const editFranchise = async(req, res) => {
         if(!franchise){
             return res.status(404).json({
                 success : false,
-                errorCode : 404,
+                httpCode : 404,
                 message : "La franquicia no existe"
             });
         }
@@ -169,7 +169,7 @@ const editFranchise = async(req, res) => {
         const updatedFranchise = await franchiseModel.findByIdAndUpdate(id, updateData, { new: true })
         return res.status(201).json({
             success: true,
-            successCode: 201,
+            httpCode: 201,
             message: "Datos actualizados",
             data: updatedFranchise
         });
@@ -186,17 +186,16 @@ const deleteFranchise = async(req, res) => {
         if(!isValidId){
             return res.status(400).json({
                 success : false,
-                errorCode : 400,
+                httpCode : 400,
                 message : "Id requerido"
             });
         }
-
 
         const franchise = await franchiseModel.findById(id);
         if(!franchise){
             return res.status(404).json({
                 success : false,
-                errorCode : 404,
+                httpCode : 404,
                 message : "La franquicia no existe"
             });
         }
@@ -205,7 +204,7 @@ const deleteFranchise = async(req, res) => {
 
         return res.status(201).json({
             success : true,
-            successCode : 201,
+            httpCode : 201,
             message : 'Franquicia eliminada'
         });
 

@@ -2,11 +2,13 @@ const menuModel = require('../../models/entities/menu');
 const handle = require('../../utils/handle/handle_error');
 const getDateAndTime = require('../../utils/date/date_info');
 const { isValidObjectId } = require('mongoose');
+const userUtils = require('../../utils/user/user_utils');
 
 //Registrar menu de una franquicia
 const registerMenu = async(req, res) => {
     try{
-        const { id_franquicia, productos, combos, estatus } = req.body;
+        const id_franquicia = await userUtils.getIdFromToken(req.body.token);
+        const { productos, combos, estatus } = req.body;
         const { fecha, hora } = await getDateAndTime();
 
         const newMenu = new menuModel({
@@ -186,11 +188,26 @@ const deleteMenu = async(req, res) => {
     }
 }
 
+const deleteCollectionMenu = async(req, res) => {
+    try{
+        await menuModel.deleteMany({});
+
+        return res.status(201).json({
+            success : true,
+            httpCode : 201,
+            message : 'Todos los menus han sido eliminados'
+        });
+    }catch(error){
+        handle(res, error);
+    }
+}
+
 module.exports = {
     registerMenu,
     allMenus,
     seachMenuById,
     franchiseMenu,
     editMenu,
-    deleteMenu
+    deleteMenu,
+    deleteCollectionMenu
 }
