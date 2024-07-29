@@ -38,9 +38,41 @@ const registerUser = async(req, res) => {
 
         res.status(201).json({
             success : true,
-            successCode : 201,
+            httpCode : 201,
             message : 'Usuario guardado'
         });
+    }catch(error){
+        handle(res, error);
+    }
+}
+
+//Buscar usuario por nombre, usuario o telefono
+const searchUser = async(req, res) => {
+    try{
+        const searchValue = req.body.value;
+
+        let searchConditions = {};
+        searchConditions['$or'] = [
+            {'nombre': {$regex: searchValue, $options: 'i'}},
+            {'usuario': {$regex: searchValue, $options: 'i'}},
+            {'telefono': {$regex: searchValue, $options: 'i'}},
+        ];
+
+        const user = await userModel.find(searchConditions).select('-password');
+        if(!user || user.length == 0){
+            return res.status(404).json({
+                success : true,
+                httpCode : 404,
+                message : 'No se han encontrado usuarios'
+            });
+        }
+
+        return res.status(201).json({
+            success : true,
+            httpCode : 201,
+            user : user
+        });
+
     }catch(error){
         handle(res, error);
     }
@@ -70,7 +102,7 @@ const searchUserByID = async(req, res) => {
 
         return res.status(201).json({
             success : true,
-            successCode : 201,
+            httpCode : 201,
             user : user
         });
 
@@ -94,7 +126,7 @@ const allUsers = async(req, res) => {
 
         return res.status(200).json({
             success : true,
-            successCode : 200,
+            httpCode : 200,
             users : users
         });
 
@@ -139,7 +171,7 @@ const changePassword = async(req, res) => {
         
         return res.status(200).json({
             success: true,
-            successCode: 200,
+            httpCode: 200,
             message: 'Contraseña actualizada'
         });
     }catch(error){
@@ -173,7 +205,7 @@ const editUser = async(req, res) => {
         const updatedUser = await userModel.findByIdAndUpdate(id, updateData, { new: true })
         return res.status(201).json({
             success: true,
-            successCode: 201,
+            httpCode: 201,
             message: "Datos actualizados",
             data: updatedUser
         });
@@ -207,7 +239,7 @@ const deleteUser = async(req, res) => {
         await userModel.findByIdAndDelete(id);
         return res.status(201).json({
             success : true,
-            successCode : 201,
+            httpCode : 201,
             message : 'Usuario eliminado'
         });
     }catch(error){
@@ -219,6 +251,7 @@ module.exports = {
     registerUser,
     allUsers,
     searchUserByID,
+    searchUser,
     changePassword,
     editUser,
     deleteUser
