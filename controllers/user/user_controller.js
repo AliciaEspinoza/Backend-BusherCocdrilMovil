@@ -1,4 +1,5 @@
 const userModel = require('../../models/users/usuario');
+const franchiseModel = require('../../models/entities/franquicia');
 const handle = require('../../utils/handle/handle_error');
 const getDateAndTime = require('../../utils/date/date_info');
 const { isValidObjectId } = require('mongoose');
@@ -179,6 +180,44 @@ const changePassword = async(req, res) => {
     }
 }
 
+//Cambiar usuario de franquicia
+const editUserFranchise = async(req, res) => {
+    try{
+        const isValidUserId = isValidObjectId(req.body.id);
+        const isValidFranchiseId = isValidObjectId(req.body.id_franquicia);
+        if(!isValidUserId || !isValidFranchiseId){
+            return res.status(400).json({
+                success : false,
+                httpCode : 400,
+                message : 'Id usuario y/o franquicia invalido(s)'
+            });
+        }
+
+        const newFranchise = req.body.id_franquicia;
+        const idUser = req.body.id;
+        const existFranchise = await franchiseModel.findById(newFranchise);
+        const existUser = await userModel.findById(idUser);
+
+        if(!existUser || !existFranchise){
+            return res.status(400).json({
+                success : false,
+                httpCode : 400,
+                message : 'El usuario y/o franquicia no existe(n)'
+            });
+        }
+
+        await userModel.findByIdAndUpdate(idUser, { id_franquicia : newFranchise }, { new : true });
+
+        return res.status(201).json({
+            success : true,
+            httpCode : 201,
+            message : 'Usuario actualizado'
+        });
+    }catch(error){
+        handle(res, error);
+    }
+};
+
 //Editar usuario
 const editUser = async(req, res) => {
     try{
@@ -254,5 +293,6 @@ module.exports = {
     searchUser,
     changePassword,
     editUser,
+    editUserFranchise,
     deleteUser
 }
