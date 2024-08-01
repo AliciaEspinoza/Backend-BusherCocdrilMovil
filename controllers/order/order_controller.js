@@ -1055,17 +1055,16 @@ const addProductsToOrder = async(req, res) => {
 };
 
 //Eliminar productos a una orden
-const removeProductsToOrder = async(req, res) => {
-    try{
+const removeProductsToOrder = async (req, res) => {
+    try {
         const idOrder = req.params.id;
         const { productos, combos } = req.body;
 
-        const isValidId = isValidObjectId(idOrder);
-        if (!isValidId) {
+        if (!isValidObjectId(idOrder)) {
             return res.status(400).json({
                 success: false,
                 httpCode: 400,
-                message: 'Id orden requerido'
+                message: 'Id de la orden inválido'
             });
         }
 
@@ -1078,89 +1077,128 @@ const removeProductsToOrder = async(req, res) => {
             });
         }
 
-        // Actualizar productos
-        if (productos && productos.length > 0) {
-            for (const prod of productos) {
-                const orderProduct = order.productos.find(p => p.id_producto.toString() === prod.id_producto);
-                if (orderProduct) {
-                    if (prod.cantidad >= orderProduct.cantidad) {
-                        order.productos.pull({ _id: orderProduct._id });
-                        console.log(`Producto eliminado: ${orderProduct._id}`);
-                    } else {
-                        orderProduct.cantidad -= prod.cantidad;
-                        let subtotal = new Decimal(orderProduct.costo).times(orderProduct.cantidad);
+        const productIdsInDb = new Set(order.productos.map(p => p.id_producto.toString()));
+        const comboIdsInDb = new Set(order.combos.map(c => c.id_combo.toString()));
 
-                        // Actualizar costo de ingredientes extra
-                        if (orderProduct.ingredientes_extra && orderProduct.ingredientes_extra.length > 0) {
-                            for (const extra of orderProduct.ingredientes_extra) {
-                                const extraCost = new Decimal(extra.costo).times(orderProduct.cantidad);
-                                subtotal = subtotal.plus(extraCost);
-                            }
+        // Verificar y actualizar productos
+        productos.forEach(prod => {
+            const prodIdStr = prod.id_producto.toString();
+            if (productIdsInDb.has(prodIdStr)) {
+                const productIndex = order.productos.findIndex(p => p.id_producto.toString() === prodIdStr);
+                if (productIndex !== -1) {
+                    order.productos[productIndex].cantidad -= prod.cantidad;
+                    if (order.productos[productIndex].cantidad <= 0) {
+                        order.productos.splice(productIndex, 1);
+                    }
+                }
+            } else {
+                console.log(`Producto no encontrado: ${prodIdStr}`);
+            }
+        });
+
+        // Verificar y actualizar combos
+        if (combos) {
+            combos.forEach(comb => {
+                const combIdStr = comb.id_combo.toString();
+                if (comboIdsInDb.has(combIdStr)) {
+                    const comboIndex = order.combos.findIndex(c => c.id_combo.toString() === combIdStr);
+                    if (comboIndex !== -1) {
+                        order.combos[comboIndex].cantidad -= comb.cantidad;
+                        if (order.combos[comboIndex].cantidad <= 0) {
+                            order.combos.splice(comboIndex, 1);
                         }
-
-                        orderProduct.subtotal = subtotal.toFixed(2);
-                        console.log(`Producto actualizado: ${orderProduct._id} - Nueva cantidad: ${orderProduct.cantidad} - Nuevo subtotal: ${orderProduct.subtotal}`);
                     }
                 } else {
-                    console.log(`Producto no encontrado: ${prod.id_producto}`);
+                    console.log(`Combo no encontrado: ${combIdStr}`);
                 }
-            }
+            });
         }
 
-        // Actualizar combos
-        if (combos && combos.length > 0) {
-            for (const comb of combos) {
-                const orderCombo = order.combos.find(c => c.id_combo.toString() === comb.id_combo);
-                if (orderCombo) {
-                    if (comb.cantidad >= orderCombo.cantidad) {
-                        order.combos.pull({ _id: orderCombo._id });
-                        console.log(`Combo eliminado: ${orderCombo._id}`);
-                    } else {
-                        orderCombo.cantidad -= comb.cantidad;
-                        let subtotal = new Decimal(orderCombo.costo).times(orderCombo.cantidad);
-
-                        // Actualizar costo de ingredientes extra
-                        if (orderCombo.ingredientes_extra && orderCombo.ingredientes_extra.length > 0) {
-                            for (const extra of orderCombo.ingredientes_extra) {
-                                const extraCost = new Decimal(extra.costo).times(orderCombo.cantidad);
-                                subtotal = subtotal.plus(extraCost);
-                            }
-                        }
-
-                        orderCombo.subtotal = subtotal.toFixed(2);
-                        console.log(`Combo actualizado: ${orderCombo._id} - Nueva cantidad: ${orderCombo.cantidad} - Nuevo subtotal: ${orderCombo.subtotal}`);
-                    }
-                } else {
-                    console.log(`Combo no encontrado: ${comb.id_combo}`);
-                }
-            }
-        }
+        // Guardar la orden modificada
+        await order.save();
 
         // Recalcular subtotal, IVA y total
-        let newSubtotal = new Decimal(0);
-        order.productos.forEach(product => {
-            newSubtotal = newSubtotal.plus(product.subtotal);
-        });
-        order.combos.forEach(combo => {
-            newSubtotal = newSubtotal.plus(combo.subtotal);
-        });
+        let total = new Decimal(0);
 
-        const newIva = newSubtotal.times(0.16).toFixed(2);
-        const newTotal = newSubtotal.plus(newIva).toFixed(2);
+        const updatedProductos = await Promise.all(order.productos.map(async (product) => {
+            const menu = await menuModel.findById(product.id_menu);
+            const productDetails = menu.productos.id(product.id_producto);
+            if (productDetails) {
+                let subtotal = new Decimal(productDetails.costo).times(product.cantidad);
 
-        order.subtotal = parseFloat(newSubtotal.toFixed(2));
-        order.iva = parseFloat(newIva);
-        order.total = parseFloat(newTotal);
+                // Agregar costo de ingredientes extra
+                if (product.ingredientes_extra && product.ingredientes_extra.length > 0) {
+                    for (const extra of product.ingredientes_extra) {
+                        const extraCost = new Decimal(extra.costo).times(product.cantidad);
+                        subtotal = subtotal.plus(extraCost);
+                    }
+                }
 
+                total = total.plus(subtotal);
+
+                return {
+                    ...product,
+                    nombre: productDetails.nombre,
+                    pesaje: productDetails.pesaje,
+                    categoria: productDetails.categoria,
+                    descripcion: productDetails.descripcion,
+                    costo: productDetails.costo,
+                    estatus: productDetails.estatus,
+                    subtotal: subtotal.toFixed(2),
+                };
+            }
+        }));
+
+        // Calcular subtotales de combos
+        const updatedCombos = await Promise.all(order.combos.map(async (combo) => {
+            const menu = await menuModel.findById(combo.id_menu);
+            const comboDetails = menu.combos.id(combo.id_combo);
+            if (comboDetails) {
+                let subtotal = new Decimal(comboDetails.costo).times(combo.cantidad);
+
+                // Agregar costo de ingredientes extra
+                if (combo.ingredientes_extra && combo.ingredientes_extra.length > 0) {
+                    for (const extra of combo.ingredientes_extra) {
+                        const extraCost = new Decimal(extra.costo).times(combo.cantidad);
+                        subtotal = subtotal.plus(extraCost);
+                    }
+                }
+
+                total = total.plus(subtotal);
+
+                return {
+                    ...combo,
+                    nombre: comboDetails.nombre,
+                    descripcion: comboDetails.descripcion,
+                    costo: comboDetails.costo,
+                    estatus: comboDetails.estatus,
+                    subtotal: subtotal.toFixed(2),
+                };
+            }
+        }));
+
+        // Calcular IVA y total
+        const iva = total.times(0.16).toFixed(2);
+        const subtotal = total.minus(new Decimal(iva)).toFixed(2);
+
+        // Actualizar valores en la orden
+        order.productos = updatedProductos;
+        order.combos = updatedCombos;
+        order.subtotal = parseFloat(subtotal);
+        order.iva = parseFloat(iva);
+        order.total = parseFloat(total);
+
+        // Guardar la orden modificada
         await order.save();
 
         return res.status(200).json({
             success: true,
             httpCode: 200,
-            message: 'Items eliminados y orden actualizada',
-            order
+            message: 'Items actualizados en la orden',
+            order: order
         });
-    }catch(error){
+    } catch (error) {
+        console.error(`Error: ${error.message}`);
         handle(res, error);
     }
 };
