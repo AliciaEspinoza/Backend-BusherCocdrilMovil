@@ -1,14 +1,16 @@
 const orderModel = require('../../models/entities/order');
 const menuModel = require('../../models/entities/menu');
+const userModel = require('../../models/users/usuario');
 const handle = require('../../utils/handle/handle_error');
 const getDateAndTime = require('../../utils/date/date_info');
 const { isValidObjectId } = require('mongoose');
 const Decimal = require('decimal.js');
+const order = require('../../models/entities/order');
 
 //Registrar orden
 const registerOrder = async (req, res) => {
     try {
-        const { id_franquicia, folio, nombre_cliente, tipo_orden, estatus, mesa, mesero } = req.body;
+        const { id_franquicia, nombre_cliente, tipo_orden, estatus, mesa, mesero } = req.body;
         const prod = req.body.productos;
         const comb = req.body.combos; 
         const { fecha, hora } = await getDateAndTime();
@@ -90,7 +92,6 @@ const registerOrder = async (req, res) => {
 
         const newOrder = new orderModel({
             id_franquicia,
-            folio,
             nombre_cliente,
             tipo_orden,
             productos: updatedProductos,
@@ -155,8 +156,16 @@ const registerOrder = async (req, res) => {
 
         // Excluir combos y productos originales
         const { productos, combos, ...orderData } = newOrder.toObject();
+
+        const user = await userModel.findById(mesero).select('-password');
+        if(!user){
+            orderData.mesero = 'NA';
+        }
+
+        // Agregar nueva informacion 
         orderData.productos = productsList;
         orderData.combos = combosList;
+        orderData.mesero = user.nombre;
 
         return res.status(201).json({
             success: true,
@@ -262,8 +271,15 @@ const searchOrder = async (req, res) => {
 
         // Excluir combos y productos originales
         const { productos, combos, ...orderData } = order.toObject();
+
+        const user = await userModel.findById(order.mesero).select('-password');
+        if(!user){
+            orderData.mesero = 'NA';
+        }
+
         orderData.productos = productsList;
         orderData.combos = combosList;
+        orderData.mesero = user.nombre;
 
         res.status(200).json({
             success: true,
@@ -288,7 +304,24 @@ const allOrdersByFranchise = async(req, res) => {
             });
         }
 
-        const orders = await orderModel.find({ id_franquicia : id });
+        let orders = await orderModel.find({ id_franquicia: id }).populate('mesero', 'nombre');
+
+        if(!orders || order.length <= 0){
+            return res.status(400).json({
+                success : false,
+                httpCode : 400,
+                message : 'La franquicia no tiene ordenes'
+            });
+        }
+
+        orders = orders.map(order => {
+            const orderData = order.toObject();
+            if (!orderData.mesero) {
+              orderData.mesero = { nombre: 'NA' }; // Asignar 'NA' si el mesero ha sido eliminado
+            }
+            return orderData;
+        });
+
         return res.status(201).json({
             success : true,
             httpCode : 201,
@@ -321,9 +354,17 @@ const ordersByTable = async(req, res) => {
             });
         }
 
-        const orders = await orderModel.find({
+        let orders = await orderModel.find({
             id_franquicia : id,
             mesa : tableNumber,
+        }).populate('mesero', 'nombre');
+
+        orders = orders.map(order => {
+            const orderData = order.toObject();
+            if (!orderData.mesero) {
+              orderData.mesero = { nombre: 'NA' }; // Asignar 'NA' si el mesero ha sido eliminado
+            }
+            return orderData;
         });
         
         if(!orders || orders.length < 1){
@@ -428,11 +469,19 @@ const completedOrdersByTable = async(req, res) => {
             });
         }
 
-        const orders = await orderModel.find({
+        let orders = await orderModel.find({
             id_franquicia : id,
             mesa : tableNumber,
             estatus : 'completada',
             tipo_orden : 'restaurante'
+        }).populate('mesero', 'nombre');
+
+        orders = orders.map(order => {
+            const orderData = order.toObject();
+            if (!orderData.mesero) {
+              orderData.mesero = { nombre: 'NA' }; // Asignar 'NA' si el mesero ha sido eliminado
+            }
+            return orderData;
         });
         
         if(!orders || orders.length < 1){
@@ -537,23 +586,22 @@ const backOrdersByTable = async(req, res) => {
             });
         }
 
-        const orders = await orderModel.find({
+        let orders = await orderModel.find({
             id_franquicia : id,
             mesa : tableNumber,
             estatus : 'pendiente',
             tipo_orden : 'restaurante'
-        });
-        
-        if(!orders || orders.length < 1){
-            return res.status(404).json({
-                success : false,
-                httpCode : 404,
-                message : `La mesa ${tableNumber} no tiene ordenes pendientes`
-            });
-        }
+        }).populate('mesero', 'nombre');
 
-         // Obtener detalles de productos y combos para cada orden
-         const detailedOrders = await Promise.all(orders.map(async (order) => {
+        orders = orders.map(order => {
+            if (!order.mesero) {
+              order.mesero = { nombre: 'NA' };
+            }
+            return order;
+        });
+
+        // Obtener detalles de productos y combos para cada orden
+        const detailedOrders = await Promise.all(orders.map(async (order) => {
             const productsList = await Promise.all(order.productos.map(async (product) => {
                 const menu = await menuModel.findById(product.id_menu);
                 if (menu) {
@@ -637,11 +685,11 @@ const completedOrdersAtHome = async(req, res) => {
             });
         }
 
-        const orders = await orderModel.find({
+        let orders = await orderModel.find({
             id_franquicia : id,
             estatus : 'completada',
             tipo_orden : 'domicilio'
-        });
+        }).populate('mesero', 'nombre');
         
         if(!orders || orders.length < 1){
             return res.status(404).json({
@@ -650,6 +698,13 @@ const completedOrdersAtHome = async(req, res) => {
                 message : `No hay ordenes completadas a domicilio`
             });
         }
+
+        orders = orders.map(order => {
+            if (!order.mesero) {
+              order.mesero = { nombre: 'NA' };
+            }
+            return order;
+        });
 
          // Obtener detalles de productos y combos para cada orden
          const detailedOrders = await Promise.all(orders.map(async (order) => {
@@ -736,11 +791,11 @@ const backOrdersAtHome = async(req, res) => {
             });
         }
 
-        const orders = await orderModel.find({
+        let orders = await orderModel.find({
             id_franquicia : id,
             estatus : 'pendiente',
             tipo_orden : 'domicilio'
-        });
+        }).populate('mesero', 'nombre');
         
         if(!orders || orders.length < 1){
             return res.status(404).json({
@@ -749,6 +804,13 @@ const backOrdersAtHome = async(req, res) => {
                 message : `No hay ordenes pendientes a domicilio`
             });
         }
+
+        orders = orders.map(order => {
+            if (!order.mesero) {
+              order.mesero = { nombre: 'NA' };
+            }
+            return order;
+        });
 
          // Obtener detalles de productos y combos para cada orden
          const detailedOrders = await Promise.all(orders.map(async (order) => {

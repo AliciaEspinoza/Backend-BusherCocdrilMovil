@@ -1,9 +1,10 @@
 const mongoose = require('mongoose');
 const schema = mongoose.Schema;
+const getNextSequenceValue = require('../../utils/db/db_utils');
 
 const orderModel = new schema({
     id_franquicia : { type : mongoose.Schema.Types.ObjectId, ref : 'Franquicias' ,required : true, trim : true },
-    folio : { type : String, required : true, trim : true },
+    folio : { type : Number, trim : true },
     nombre_cliente : { type : String, required : true, trim : true },
     tipo_orden : { type : String, required : true, trim : true },
     iva : { type : Number, default : 0, trim : true },
@@ -38,6 +39,13 @@ const orderModel = new schema({
             costo : { type : Number, default : 0, required : true, trim : true },
         }]
     }],
+});
+
+orderModel.pre('save', async function(next) {
+    if (this.isNew) {
+      this.folio = await getNextSequenceValue('folio', this.id_franquicia);
+    }
+    next();
 });
 
 const order = mongoose.model('Ordenes', orderModel);
