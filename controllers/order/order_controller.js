@@ -897,7 +897,7 @@ const backOrdersRestaurant = async(req, res) => {
             });
         }
 
-        const orders = await orderModel.find({id_franquicia : id, estatus : 'pendiente'});
+        let orders = await orderModel.find({id_franquicia : id, estatus : 'pendiente'}).populate('mesero', 'nombre');
         if(!orders || orders.length == 0){
             return res.status(404).json({
                 success : false,
@@ -905,6 +905,13 @@ const backOrdersRestaurant = async(req, res) => {
                 message : 'No hay ordenes pendientes'
             });
         }
+
+        orders = orders.map(order => {
+            if (!order.mesero) {
+              order.mesero = { nombre: 'NA' };
+            }
+            return order;
+        });
 
         return res.status(201).json({
             success : true,
@@ -931,7 +938,7 @@ const completedOrdersRestaurant = async(req, res) => {
             });
         }
 
-        const orders = await orderModel.find({id_franquicia : id, estatus : 'completada'});
+        let orders = await orderModel.find({id_franquicia : id, estatus : 'completada'}).populate('mesero', 'nombre');
         if(!orders || orders.length == 0){
             return res.status(404).json({
                 success : false,
@@ -939,6 +946,13 @@ const completedOrdersRestaurant = async(req, res) => {
                 message : 'No hay ordenes completadas'
             });
         }
+
+        orders = orders.map(order => {
+            if (!order.mesero) {
+              order.mesero = { nombre: 'NA' };
+            }
+            return order;
+        });
 
         return res.status(201).json({
             success : true,
