@@ -1,11 +1,12 @@
 const orderModel = require('../../models/entities/order');
 const menuModel = require('../../models/entities/menu');
 const userModel = require('../../models/users/usuario');
+const franchiseModel = require('../../models/entities/franquicia');
 const handle = require('../../utils/handle/handle_error');
 const getDateAndTime = require('../../utils/date/date_info');
 const { isValidObjectId } = require('mongoose');
 const Decimal = require('decimal.js');
-const order = require('../../models/entities/order');
+const generatePDF = require('../../utils/files/generateReportInPDF');
 
 //Registrar orden
 const registerOrder = async (req, res) => {
@@ -178,6 +179,125 @@ const registerOrder = async (req, res) => {
     }
 };
 
+const generateOrderReport = async(req, res) => {
+    try{    
+        const isValidId = isValidObjectId(req.params.franchise);
+        const id = req.params.franchise;
+        if (!isValidId) {
+            return res.status(400).json({
+                success: false,
+                httpCode: 400,
+                message: 'Id franquicia requerido'
+            });
+        }
+
+        const franchise = await franchiseModel.findById(id);
+
+        // Encuentra todas las órdenes para la franquicia
+        let orders = await orderModel.find({ id_franquicia: id })
+            .populate({
+                path: 'productos.id_menu',
+                populate: {
+                    path: 'productos',
+                    model: 'Productos'
+                }
+            })
+            .populate({
+                path: 'combos.id_menu',
+                populate: {
+                    path: 'combos',
+                    model: 'Combos'
+                }
+            })
+            .populate('mesero', 'nombre');
+
+        if (!orders || orders.length <= 0) {
+            return res.status(400).json({
+                success: false,
+                httpCode: 400,
+                message: 'La franquicia no tiene órdenes'
+            });
+        }
+
+        // Procesa cada orden
+        orders = await Promise.all(orders.map(async (order) => {
+            let productsList = [];
+            let combosList = [];
+
+            // Verifica si `productos` y `combos` están definidos y no están vacíos
+            if (order.productos && order.productos.length > 0) {
+                for (const product of order.productos) {
+                    const menu = product.id_menu; // debe estar poblado
+                    if (menu && menu.productos) {
+                        const productDetails = menu.productos.find(p => p._id.toString() === product.id_producto.toString());
+                        if (productDetails) {
+                            let subtotal = new Decimal(productDetails.costo).times(product.cantidad);
+
+                            if (product.ingredientes_extra && product.ingredientes_extra.length > 0) {
+                                for (const extra of product.ingredientes_extra) {
+                                    const extraCost = new Decimal(extra.costo).times(product.cantidad);
+                                    subtotal = subtotal.plus(extraCost);
+                                }
+                            }
+
+                            productsList.push({
+                                ...productDetails.toObject(),
+                                cantidad: product.cantidad,
+                                ingredientes_extra: product.ingredientes_extra,
+                                subtotal: subtotal.toFixed(2)
+                            });
+                        }
+                    }
+                }
+            }
+
+            if (order.combos && order.combos.length > 0) {
+                for (const combo of order.combos) {
+                    const menu = combo.id_menu; // debe estar poblado
+                    if (menu && menu.combos) {
+                        const comboDetails = menu.combos.find(c => c._id.toString() === combo.id_combo.toString());
+                        if (comboDetails) {
+                            let subtotal = new Decimal(comboDetails.costo).times(combo.cantidad);
+
+                            if (combo.ingredientes_extra && combo.ingredientes_extra.length > 0) {
+                                for (const extra of combo.ingredientes_extra) {
+                                    const extraCost = new Decimal(extra.costo).times(combo.cantidad);
+                                    subtotal = subtotal.plus(extraCost);
+                                }
+                            }
+
+                            combosList.push({
+                                ...comboDetails.toObject(),
+                                cantidad: combo.cantidad,
+                                ingredientes_extra: combo.ingredientes_extra,
+                                subtotal: subtotal.toFixed(2)
+                            });
+                        }
+                    }
+                }
+            }
+
+            const { productos, combos, ...orderData } = order.toObject();
+            const user = await userModel.findById(order.mesero).select('-password');
+            orderData.productos = productsList;
+            orderData.combos = combosList;
+            orderData.mesero = user ? user.nombre : 'NA';
+
+            return orderData;
+        }));
+
+        const buffer = await generatePDF(orders, franchise);
+        res.writeHead(200, {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': 'attachment; filename="reporte.pdf"',
+            'Content-Length': buffer.length
+        });
+        res.end(buffer);
+    }catch(error){
+        handle(res, error);
+    }
+}
+
 //Buscar orden por id
 const searchOrder = async (req, res) => {
     try {
@@ -293,44 +413,119 @@ const searchOrder = async (req, res) => {
 
 //Consultar todas las ordenes de una franquicia
 const allOrdersByFranchise = async(req, res) => {
-    try{
+    try {
         const isValidId = isValidObjectId(req.params.franchise);
         const id = req.params.franchise;
-        if(!isValidId){
+        if (!isValidId) {
             return res.status(400).json({
-                success : false,
-                httpCode : 400,
-                message : 'Id franquicia requerido'
+                success: false,
+                httpCode: 400,
+                message: 'Id franquicia requerido'
             });
         }
 
-        let orders = await orderModel.find({ id_franquicia: id }).populate('mesero', 'nombre');
+        // Encuentra todas las órdenes para la franquicia
+        let orders = await orderModel.find({ id_franquicia: id })
+            .populate({
+                path: 'productos.id_menu',
+                populate: {
+                    path: 'productos',
+                    model: 'Productos'
+                }
+            })
+            .populate({
+                path: 'combos.id_menu',
+                populate: {
+                    path: 'combos',
+                    model: 'Combos'
+                }
+            })
+            .populate('mesero', 'nombre');
 
-        if(!orders || order.length <= 0){
+        if (!orders || orders.length <= 0) {
             return res.status(400).json({
-                success : false,
-                httpCode : 400,
-                message : 'La franquicia no tiene ordenes'
+                success: false,
+                httpCode: 400,
+                message: 'La franquicia no tiene órdenes'
             });
         }
 
-        orders = orders.map(order => {
-            const orderData = order.toObject();
-            if (!orderData.mesero) {
-              orderData.mesero = { nombre: 'NA' }; // Asignar 'NA' si el mesero ha sido eliminado
+        // Procesa cada orden
+        orders = await Promise.all(orders.map(async (order) => {
+            let productsList = [];
+            let combosList = [];
+
+            // Verifica si `productos` y `combos` están definidos y no están vacíos
+            if (order.productos && order.productos.length > 0) {
+                for (const product of order.productos) {
+                    const menu = product.id_menu; // debe estar poblado
+                    if (menu && menu.productos) {
+                        const productDetails = menu.productos.find(p => p._id.toString() === product.id_producto.toString());
+                        if (productDetails) {
+                            let subtotal = new Decimal(productDetails.costo).times(product.cantidad);
+
+                            if (product.ingredientes_extra && product.ingredientes_extra.length > 0) {
+                                for (const extra of product.ingredientes_extra) {
+                                    const extraCost = new Decimal(extra.costo).times(product.cantidad);
+                                    subtotal = subtotal.plus(extraCost);
+                                }
+                            }
+
+                            productsList.push({
+                                ...productDetails.toObject(),
+                                cantidad: product.cantidad,
+                                ingredientes_extra: product.ingredientes_extra,
+                                subtotal: subtotal.toFixed(2)
+                            });
+                        }
+                    }
+                }
             }
-            return orderData;
-        });
 
-        return res.status(201).json({
-            success : true,
-            httpCode : 201,
+            if (order.combos && order.combos.length > 0) {
+                for (const combo of order.combos) {
+                    const menu = combo.id_menu; // debe estar poblado
+                    if (menu && menu.combos) {
+                        const comboDetails = menu.combos.find(c => c._id.toString() === combo.id_combo.toString());
+                        if (comboDetails) {
+                            let subtotal = new Decimal(comboDetails.costo).times(combo.cantidad);
+
+                            if (combo.ingredientes_extra && combo.ingredientes_extra.length > 0) {
+                                for (const extra of combo.ingredientes_extra) {
+                                    const extraCost = new Decimal(extra.costo).times(combo.cantidad);
+                                    subtotal = subtotal.plus(extraCost);
+                                }
+                            }
+
+                            combosList.push({
+                                ...comboDetails.toObject(),
+                                cantidad: combo.cantidad,
+                                ingredientes_extra: combo.ingredientes_extra,
+                                subtotal: subtotal.toFixed(2)
+                            });
+                        }
+                    }
+                }
+            }
+
+            const { productos, combos, ...orderData } = order.toObject();
+            const user = await userModel.findById(order.mesero).select('-password');
+            orderData.productos = productsList;
+            orderData.combos = combosList;
+            orderData.mesero = user ? user.nombre : 'NA';
+
+            return orderData;
+        }));
+
+        return res.status(200).json({
+            success: true,
+            httpCode: 200,
             orders
         });
-    }catch(error){
+    } catch (error) {
         handle(res, error);
     }
-}
+};
 
 //Buscar ordenes de una mesa por franquicia
 const ordersByTable = async(req, res) => {
@@ -1353,6 +1548,7 @@ const deleteAllOrders = async(req, res) => {
 
 module.exports = {
     registerOrder,
+    generateOrderReport,
     searchOrder,
     allOrdersByFranchise,
     ordersByTable,

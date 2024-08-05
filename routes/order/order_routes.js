@@ -6,6 +6,7 @@ const router = express.Router();
 
 router.post('/register', controller.registerOrder);
 router.get('/search-order/:id', controller.searchOrder);
+router.get('/generate-orders-report/:franchise', controller.generateOrderReport);
 router.get('/all-orders-franchise/:franchise', controller.allOrdersByFranchise);
 router.get('/all-orders-by-table/:franchise/:table', controller.ordersByTable);
 router.get('/all-completed-orders-by-table/:franchise/:table', controller.completedOrdersByTable);
